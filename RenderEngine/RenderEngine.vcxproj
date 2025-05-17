@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="DX12_Debug|Win32">
+      <Configuration>DX12_Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DX12_Release|Win32">
+      <Configuration>DX12_Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DX12_Debug|x64">
+      <Configuration>DX12_Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DX12_Release|x64">
+      <Configuration>DX12_Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{9e262276-7a97-4226-8beb-23d8d0aafd2a}</ProjectGuid>
+    <RootNamespace>RenderEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
+    <CopyFileAfterTargets>PostBuildEvent</CopyFileAfterTargets>
+    <TargetName>$(Configuration)_$(Platform)</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
+    <CopyFileAfterTargets>PostBuildEvent</CopyFileAfterTargets>
+    <TargetName>$(Configuration)_$(Platform)</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
+    <CopyFileAfterTargets>PostBuildEvent</CopyFileAfterTargets>
+    <TargetName>$(Configuration)_$(Platform)</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
+    <CopyFileAfterTargets>PostBuildEvent</CopyFileAfterTargets>
+    <TargetName>$(Configuration)_$(Platform)</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Clear any existing old build artifacts</Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
+call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
+      <Message>Compile engine assets (meshes, textures, shaders etc)</Message>
+    </PostBuildEvent>
+    <CopyFileToFolders>
+      <DestinationFolders>$(OutputPath)assets;</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Clear any existing old build artifacts</Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
+call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
+      <Message>Compile engine assets (meshes, textures, shaders etc)</Message>
+    </PostBuildEvent>
+    <CopyFileToFolders>
+      <DestinationFolders>$(OutputPath)assets;</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Clear any existing old build artifacts</Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
+call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
+      <Message>Compile engine assets (meshes, textures, shaders etc)</Message>
+    </PostBuildEvent>
+    <CopyFileToFolders>
+      <DestinationFolders>$(OutputPath)assets;</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Clear any existing old build artifacts</Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
+call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
+      <Message>Compile engine assets (meshes, textures, shaders etc)</Message>
+    </PostBuildEvent>
+    <CopyFileToFolders>
+      <DestinationFolders>$(OutputPath)assets;</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="assets\shaders\shading.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <ClCompile Include="third_party\ImGuizmo\ImGuizmo.cpp">
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
+    </ClCompile>
+    <CopyFileToFolders Include="assets\shaders\default_vs.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\deferred.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\lighting.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\screen_quad.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\texcam.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\depth_of_field.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <ClCompile Include="source\game\game.cpp" />
+    <ClCompile Include="source\platform\windows.cpp" />
+    <ClCompile Include="source\render\api\directx12\constant_buffer.cpp" />
+    <ClCompile Include="source\render\api\directx12\descriptor_heap.cpp" />
+    <ClCompile Include="source\render\camera.cpp" />
+    <ClCompile Include="source\render\api\directx12\helpers.cpp" />
+    <ClCompile Include="source\render\api\directx12\renderer.cpp" />
+    <ClCompile Include="source\render\api\directx12\render_target.cpp" />
+    <ClCompile Include="source\render\api\directx12\shader_input.cpp" />
+    <ClCompile Include="source\render\constants.cpp" />
+    <ClCompile Include="source\render\imgui_overlay.cpp" />
+    <ClCompile Include="source\render\material.cpp" />
+    <ClCompile Include="source\render\model.cpp" />
+    <ClCompile Include="source\render\render.cpp" />
+    <ClCompile Include="source\render\shader.cpp" />
+    <ClCompile Include="source\render\texture.cpp" />
+    <ClCompile Include="source\reporting\report.cpp" />
+    <ClCompile Include="source\scene\object.cpp" />
+    <ClCompile Include="source\scene\scene.cpp" />
+    <ClCompile Include="source\time\time.cpp" />
+    <ClCompile Include="source\types.cpp" />
+    <ClCompile Include="third_party\imgui-1.91.6\backends\imgui_impl_dx12.cpp">
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
+    </ClCompile>
+    <ClCompile Include="third_party\imgui-1.91.6\backends\imgui_impl_win32.cpp">
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
+    </ClCompile>
+    <ClCompile Include="third_party\imgui-1.91.6\imgui.cpp">
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
+    </ClCompile>
+    <ClCompile Include="third_party\imgui-1.91.6\imgui_demo.cpp">
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
+    </ClCompile>
+    <ClCompile Include="third_party\imgui-1.91.6\imgui_draw.cpp">
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
+    </ClCompile>
+    <ClCompile Include="third_party\imgui-1.91.6\imgui_tables.cpp">
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
+    </ClCompile>
+    <ClCompile Include="third_party\imgui-1.91.6\imgui_widgets.cpp">
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">false</IncludeInUnityFile>
+      <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\game\game.h" />
+    <ClInclude Include="source\platform\windows.h" />
+    <ClInclude Include="source\render\api\directx12\descriptor_heap.h" />
+    <ClInclude Include="source\render\camera.h" />
+    <ClInclude Include="source\render\constants.h" />
+    <ClInclude Include="source\render\api\directx12\constant_buffer.h" />
+    <ClInclude Include="source\render\api\directx12\helpers.h" />
+    <ClInclude Include="source\render\api\directx12\renderer.h" />
+    <ClInclude Include="source\render\api\directx12\render_target.h" />
+    <ClInclude Include="source\render\api\directx12\shader_input.h" />
+    <ClInclude Include="source\render\imgui_overlay.h" />
+    <ClInclude Include="source\render\material.h" />
+    <ClInclude Include="source\render\model.h" />
+    <ClInclude Include="source\render\render.h" />
+    <ClInclude Include="source\render\shader.h" />
+    <ClInclude Include="source\render\texture.h" />
+    <ClInclude Include="source\reporting\report.h" />
+    <ClInclude Include="source\scene\object.h" />
+    <ClInclude Include="source\scene\scene.h" />
+    <ClInclude Include="source\time\time.h" />
+    <ClInclude Include="source\types.h" />
+    <ClInclude Include="third_party\imgui-1.91.6\backends\imgui_impl_dx12.h" />
+    <ClInclude Include="third_party\imgui-1.91.6\backends\imgui_impl_win32.h" />
+    <ClInclude Include="third_party\imgui-1.91.6\imconfig.h" />
+    <ClInclude Include="third_party\imgui-1.91.6\imgui.h" />
+    <ClInclude Include="third_party\imgui-1.91.6\imgui_internal.h" />
+    <ClInclude Include="third_party\imgui-1.91.6\imstb_rectpack.h" />
+    <ClInclude Include="third_party\imgui-1.91.6\imstb_textedit.h" />
+    <ClInclude Include="third_party\imgui-1.91.6\imstb_truetype.h" />
+    <ClInclude Include="third_party\ImGuizmo\ImGuizmo.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="third_party\DirectXTK12-oct2024\DirectXTK_Desktop_2022_Win10.vcxproj">
+      <Project>{3e0e8608-cd9b-4c76-af33-29ca38f2c9f0}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="assets\shaders\constants.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\gaussian_blur.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\post_processing.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

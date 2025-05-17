@@ -1,0 +1,58 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# VS folder
+.vs/
+
+# Output folders
+x64/
+x86/
+DX12_Debug/
+DX12_Release/
+RenderEngine/x64/
+RenderEngine/x86/
+
+# Compiled meshes
+*.sdkmesh
+*.vbo
+
+# Compiled assets folder
+RenderEngine/assets_compiled
+
+# Allowed files
+!RenderEngine/tools/*.exe
+!RenderEngine/tools/*.dll
+!RenderEngine/tools/nvidia/*.exe
+!RenderEngine/tools/nvidia/*.dll
+!RenderEngine/assets/models/*.obj
+!RenderEngine/assets/models/sponza/*.obj
