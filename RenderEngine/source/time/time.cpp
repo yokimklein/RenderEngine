@@ -18,6 +18,7 @@ const float c_time_manager::delta_time()
 
 	m_frame_timer += delta_time;
 
+	// Count FPS each second
 	if (m_frame_timer >= 1.0f)
 	{
 		m_frame_timer -= 1.0f;
@@ -26,15 +27,20 @@ const float c_time_manager::delta_time()
 	}
 
 	m_accumulator += delta_time;
-	if (m_accumulator >= SECONDS_PER_TICK)
+
+	if (m_accumulator < SECONDS_PER_TICK)
 	{
-		m_accumulator = m_accumulator - SECONDS_PER_TICK;
-		delta_time = SECONDS_PER_TICK;
+		//LOG_MESSAGE("dt: %f acc: %f", 0.0f, m_accumulator);
+		return 0.0f;
 	}
-	else
+
+	float delta_time_increments = delta_time;
+	while (m_accumulator >= SECONDS_PER_TICK)
 	{
-		delta_time = 0.0;
+		m_accumulator -= SECONDS_PER_TICK;
+		delta_time_increments += SECONDS_PER_TICK;
 	}
-	//LOG_MESSAGE("dt: %f acc: %f", delta_time, m_accumulator);
-	return delta_time;
+
+	//LOG_MESSAGE("dt: %f acc: %f", delta_time_increments, m_accumulator);
+	return delta_time_increments;
 }
