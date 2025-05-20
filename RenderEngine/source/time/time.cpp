@@ -15,10 +15,10 @@ const float c_time_manager::delta_time()
 {
 	float delta_time = duration<float>(steady_clock::now() - m_last_frame).count();
 	m_last_frame = steady_clock::now();
-
-	m_frame_timer += delta_time;
+	m_accumulator += delta_time;
 
 	// Count FPS each second
+	m_frame_timer += delta_time;
 	if (m_frame_timer >= 1.0f)
 	{
 		m_frame_timer -= 1.0f;
@@ -26,21 +26,10 @@ const float c_time_manager::delta_time()
 		m_frame_counter = 0;
 	}
 
-	m_accumulator += delta_time;
-
-	if (m_accumulator < SECONDS_PER_TICK)
-	{
-		//LOG_MESSAGE("dt: %f acc: %f", 0.0f, m_accumulator);
-		return 0.0f;
-	}
-
-	float delta_time_increments = delta_time;
-	while (m_accumulator >= SECONDS_PER_TICK)
-	{
-		m_accumulator -= SECONDS_PER_TICK;
-		delta_time_increments += SECONDS_PER_TICK;
-	}
-
-	//LOG_MESSAGE("dt: %f acc: %f", delta_time_increments, m_accumulator);
-	return delta_time_increments;
+	// Return number of whole ticks
+	dword ticks = static_cast<dword>(m_accumulator / SECONDS_PER_TICK);
+	float whole_delta_time = ticks * SECONDS_PER_TICK;
+	m_accumulator -= whole_delta_time;
+	//LOG_MESSAGE("dt: %f acc: %f", whole_delta_time, m_accumulator);
+	return whole_delta_time;
 }
