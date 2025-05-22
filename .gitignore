@@ -45,14 +45,15 @@ RenderEngine/x86/
 # Compiled meshes
 *.sdkmesh
 *.vbo
+*.vbo_i32
 
 # Compiled assets folder
 RenderEngine/assets_compiled
 
+# local screenshots
+screenshots/
+
 # Allowed files
-!RenderEngine/tools/*.exe
-!RenderEngine/tools/*.dll
-!RenderEngine/tools/nvidia/*.exe
-!RenderEngine/tools/nvidia/*.dll
-!RenderEngine/assets/models/*.obj
-!RenderEngine/assets/models/sponza/*.obj
+!RenderEngine/tools/**/*.exe
+!RenderEngine/tools/**/*.dll
+!RenderEngine/assets/**/*.obj

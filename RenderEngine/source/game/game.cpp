@@ -87,91 +87,8 @@ void main_win(qword hwnd)
 
 void main_init()
 {
-    /*
-	// load cube model
-    vertex cube_vertices[] =
-    {
-        // top
-        { { { -1.0f,  1.0f,  1.0f }, {  0.0f,  1.0f,  0.0f }, { 1.0f, 1.0f } } }, // 3 // 0
-        { { {  1.0f,  1.0f, -1.0f }, {  0.0f,  1.0f,  0.0f }, { 0.0f, 0.0f } } }, // 1 // 1
-        { { { -1.0f,  1.0f, -1.0f }, {  0.0f,  1.0f,  0.0f }, { 1.0f, 0.0f } } }, // 0 // 2
-                                                      
-        { { {  1.0f,  1.0f,  1.0f }, {  0.0f,  1.0f,  0.0f }, { 0.0f, 1.0f } } }, // 2 // 3
-        { { {  1.0f,  1.0f, -1.0f }, {  0.0f,  1.0f,  0.0f }, { 0.0f, 0.0f } } }, // 1 // 4
-        { { { -1.0f,  1.0f,  1.0f }, {  0.0f,  1.0f,  0.0f }, { 1.0f, 1.0f } } }, // 3 // 5
-                                                      
-        // bottom                                     
-        { { {  1.0f, -1.0f,  1.0f }, {  0.0f, -1.0f,  0.0f }, { 1.0f, 1.0f } } }, // 6 // 6
-        { { { -1.0f, -1.0f, -1.0f }, {  0.0f, -1.0f,  0.0f }, { 0.0f, 0.0f } } }, // 4 // 7
-        { { {  1.0f, -1.0f, -1.0f }, {  0.0f, -1.0f,  0.0f }, { 1.0f, 0.0f } } }, // 5 // 8
-                                                      
-        { { { -1.0f, -1.0f,  1.0f }, {  0.0f, -1.0f,  0.0f }, { 0.0f, 1.0f } } }, // 7 // 9
-        { { { -1.0f, -1.0f, -1.0f }, {  0.0f, -1.0f,  0.0f }, { 0.0f, 0.0f } } }, // 4 // 10 
-        { { {  1.0f, -1.0f,  1.0f }, {  0.0f, -1.0f,  0.0f }, { 1.0f, 1.0f } } }, // 6 // 11
-                                                      
-        // left                                       
-        { { { -1.0f,  1.0f,  1.0f }, { -1.0f,  0.0f,  0.0f }, { 0.0f, 0.0f } } }, // 11 // 12
-        { { { -1.0f, -1.0f, -1.0f }, { -1.0f,  0.0f,  0.0f }, { 1.0f, 1.0f } } }, // 9 // 13
-        { { { -1.0f, -1.0f,  1.0f }, { -1.0f,  0.0f,  0.0f }, { 0.0f, 1.0f } } }, // 8 // 14
-                                                      
-        { { { -1.0f,  1.0f, -1.0f }, { -1.0f,  0.0f,  0.0f }, { 1.0f, 0.0f } } }, // 10 // 15
-        { { { -1.0f, -1.0f, -1.0f }, { -1.0f,  0.0f,  0.0f }, { 1.0f, 1.0f } } }, // 9 // 16
-        { { { -1.0f,  1.0f,  1.0f }, { -1.0f,  0.0f,  0.0f }, { 0.0f, 0.0f } } }, // 11 // 17
-                                                      
-        // right                                      
-        { { {  1.0f,  1.0f, -1.0f }, {  1.0f,  0.0f,  0.0f }, { 0.0f, 0.0f } } }, // 14 // 18
-        { { {  1.0f, -1.0f,  1.0f }, {  1.0f,  0.0f,  0.0f }, { 1.0f, 1.0f } } }, // 12 // 19
-        { { {  1.0f, -1.0f, -1.0f }, {  1.0f,  0.0f,  0.0f }, { 0.0f, 1.0f } } }, // 13 // 20
-                                                      
-        { { {  1.0f,  1.0f,  1.0f }, {  1.0f,  0.0f,  0.0f }, { 1.0f, 0.0f } } }, // 15 // 21
-        { { {  1.0f, -1.0f,  1.0f }, {  1.0f,  0.0f,  0.0f }, { 1.0f, 1.0f } } }, // 12 // 22
-        { { {  1.0f,  1.0f, -1.0f }, {  1.0f,  0.0f,  0.0f }, { 0.0f, 0.0f } } }, // 14 // 23
-
-        // front
-        { { { -1.0f,  1.0f, -1.0f }, {  0.0f,  0.0f, -1.0f }, { 0.0f, 0.0f } } }, // 19 // 24
-        { { {  1.0f, -1.0f, -1.0f }, {  0.0f,  0.0f, -1.0f} , { 1.0f, 1.0f } } }, // 17 // 25
-        { { { -1.0f, -1.0f, -1.0f }, {  0.0f,  0.0f, -1.0f }, { 0.0f, 1.0f } } }, // 16 // 26 
-                                               
-        { { {  1.0f,  1.0f, -1.0f }, {  0.0f,  0.0f, -1.0f }, { 1.0f, 0.0f } } }, // 18 // 27
-        { { {  1.0f, -1.0f, -1.0f }, {  0.0f,  0.0f, -1.0f} , { 1.0f, 1.0f } } }, // 17 // 28
-        { { { -1.0f,  1.0f, -1.0f }, {  0.0f,  0.0f, -1.0f }, { 0.0f, 0.0f } } }, // 19 // 29
-                                               
-        // back                                
-        { { {  1.0f,  1.0f,  1.0f }, {  0.0f,  0.0f,  1.0f }, { 0.0f, 0.0f } } }, // 22
-        { { { -1.0f, -1.0f,  1.0f }, {  0.0f,  0.0f,  1.0f }, { 1.0f, 1.0f } } }, // 20s
-        { { {  1.0f, -1.0f,  1.0f }, {  0.0f,  0.0f,  1.0f }, { 0.0f, 1.0f } } }, // 21
-                                                      
-        { { { -1.0f,  1.0f,  1.0f }, {  0.0f,  0.0f,  1.0f }, { 1.0f, 0.0f } } }, // 23
-        { { { -1.0f, -1.0f,  1.0f }, {  0.0f,  0.0f,  1.0f }, { 1.0f, 1.0f } } }, // 20
-        { { {  1.0f,  1.0f,  1.0f }, {  0.0f,  0.0f,  1.0f }, { 0.0f, 0.0f } } }, // 22
-    };
-    dword cube_indices[] =
-    {
-        0,1,2,
-        3,4,5,
-
-        6,7,8,
-        9,10,11,
-
-        12,13,14,
-        15,16,17,
-
-        18,19,20,
-        21,22,23,
-
-        24,25,26,
-        27,28,29,
-
-        30,31,32,
-        33,34,35
-    };
-    */
     // scene lights
     g_scene->m_lights[0].m_enabled = static_cast<dword>(true);
-    //point3d look_direction = g_camera->get_look_direction();
-    //XMVECTOR light_direction = XMVectorSet(look_direction.x, look_direction.y, look_direction.z, 1.0f);
-    //light_direction = XMVector3Normalize(light_direction);
-    //XMStoreFloat4((XMFLOAT4*)&g_scene->m_lights[0].m_direction, light_direction);
     g_scene->m_lights[0].m_light_type = _light_point;
     g_scene->m_lights[0].m_spot_angle = XMConvertToRadians(45.0f);
     g_scene->m_lights[0].m_constant_attenuation = 1.0f;
@@ -196,7 +113,7 @@ void main_init()
     // TODO: Move these to object initialisation! Load data from external files
     // need to get asset manager working again to handle shared resources
 	//c_mesh* cube_model = new c_mesh(g_renderer, cube_vertices, sizeof(cube_vertices), cube_indices, sizeof(cube_indices));
-	c_mesh* cube_model = new c_mesh(g_renderer, L"assets\\models\\cube.vbo");
+	c_mesh* cube_model = new c_mesh(g_renderer, L"assets\\models\\cube.vbo_i32");
 
     c_material* cube_material = new c_material(g_renderer, 3);
     cube_material->m_properties.m_diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -232,141 +149,144 @@ void main_init()
     g_scene->add_object(cube_object);
 
     // 25 diff, 19 norm
-    constexpr const char* sponza_mesh_material_names[25] =
+    constexpr const char* sponza_mesh_material_names[28] =
     {
-        "arch",
-        "background",
-        "bricks",
-        "ceiling",
-        "chain",
-        "column_a",
-        "column_b",
-        "column_c",
-        "details",
-        "fabric_a",
-        "fabric_c",
-        "fabric_d",
-        "fabric_e",
-        "fabric_f",
-        "fabric_g",
-        "flagpole",
-        "floor",
-        "leaf",
-        "lion",
-        "plaque",
-        "roof",
-        "vase", // textures arent applying correctly
-        "vase_hanging",
-        "vase_plant",
-        "vase_round"
-    };
-    constexpr const char* sponza_material_texture_names[25][2] =
-    {
-        { "sponza_arch_diff",          "sponza_arch_ddn"      },
-        { "background",                "background_ddn"       },
-        { "spnza_bricks_a_diff",       "spnza_bricks_a_ddn"   },
-        { "sponza_ceiling_a_diff",     "sponza_ceiling_a_ddn" },
-        { "chain_texture",             "chain_texture_ddn"    },
-        { "sponza_column_a_diff",      "sponza_column_a_ddn"  },
-        { "sponza_column_b_diff",      "sponza_column_b_ddn"  },
-        { "sponza_column_c_diff",      "sponza_column_c_ddn"  },
-        { "sponza_details_diff",       "sponza_details_ddn"   },
-        { "sponza_fabric_diff",        "sponza_fabric_ddn"    }, // shares normal w/ fabric
-        { "sponza_curtain_diff",       "sponza_curtain_ddn"   }, // shares normal w/ curtain
-        { "sponza_fabric_blue_diff",   "sponza_fabric_ddn"    }, // shares normal w/ fabric
-        { "sponza_fabric_green_diff",  "sponza_fabric_ddn"    }, // shares normal w/ fabric
-        { "sponza_curtain_green_diff", "sponza_curtain_ddn"   }, // shares normal w/ curtain
-        { "sponza_curtain_blue_diff",  "sponza_curtain_ddn"   }, // shares normal w/ curtain
-        { "sponza_flagpole_diff",      "sponza_flagpole_ddn"  },
-        { "sponza_floor_a_diff",       "sponza_floor_a_ddn"   },
-        { "sponza_thorn_diff",         "sponza_thorn_ddn"     },
-        { "lion",                      "lion_ddn"             },
-        { "",                          ""                     }, // no diffuse, no normal
-        { "sponza_roof_diff",          "sponza_roof_ddn"      },
-        { "vase_dif",                  "vase_ddn"             },
-        { "vase_hanging",              "vase_hanging_ddn"     },
-        { "vase_plant",                ""                     }, // no normal
-        { "vase_round",                "vase_round_ddn"       },
+        "arch_stone_wall_01",
+        "brickwall_01",
+        "brickwall_02",
+        "ceiling_plaster_01",
+        "ceiling_plaster_02",
+        "column_1stfloor",
+        "column_brickwall_01",
+        "column_head_1stfloor",
+        "column_head_2ndfloor_02",
+        "column_head_2ndfloor_03",
+        "dirt_decal",
+        "door_stoneframe_01",
+        "door_stoneframe_02",
+        "floor_01",
+        "glass",
+        "lamp_glass_01",
+        "light_bulb",
+        "metal_door",
+        "ornament_01",
+        "ornament_lion",
+        "roof_tiles_01",
+        "stones_01_tile",
+        "stones_2ndfloor",
+        "stone_trims_01",
+        "stone_trims_02",
+        "window_frame_01",
+        "wood_01",
+        "wood_door_01"
     };
     constexpr dword sponza_mesh_material_count = _countof(sponza_mesh_material_names);
+    //constexpr const char* sponza_material_texture_names[25][2] =
+    //{
+    //    { "sponza_arch_diff",          "sponza_arch_ddn"      },
+    //    { "background",                "background_ddn"       },
+    //    { "spnza_bricks_a_diff",       "spnza_bricks_a_ddn"   },
+    //    { "sponza_ceiling_a_diff",     "sponza_ceiling_a_ddn" },
+    //    { "chain_texture",             "chain_texture_ddn"    },
+    //    { "sponza_column_a_diff",      "sponza_column_a_ddn"  },
+    //    { "sponza_column_b_diff",      "sponza_column_b_ddn"  },
+    //    { "sponza_column_c_diff",      "sponza_column_c_ddn"  },
+    //    { "sponza_details_diff",       "sponza_details_ddn"   },
+    //    { "sponza_fabric_diff",        "sponza_fabric_ddn"    }, // shares normal w/ fabric
+    //    { "sponza_curtain_diff",       "sponza_curtain_ddn"   }, // shares normal w/ curtain
+    //    { "sponza_fabric_blue_diff",   "sponza_fabric_ddn"    }, // shares normal w/ fabric
+    //    { "sponza_fabric_green_diff",  "sponza_fabric_ddn"    }, // shares normal w/ fabric
+    //    { "sponza_curtain_green_diff", "sponza_curtain_ddn"   }, // shares normal w/ curtain
+    //    { "sponza_curtain_blue_diff",  "sponza_curtain_ddn"   }, // shares normal w/ curtain
+    //    { "sponza_flagpole_diff",      "sponza_flagpole_ddn"  },
+    //    { "sponza_floor_a_diff",       "sponza_floor_a_ddn"   },
+    //    { "sponza_thorn_diff",         "sponza_thorn_ddn"     },
+    //    { "lion",                      "lion_ddn"             },
+    //    { "",                          ""                     }, // no diffuse, no normal
+    //    { "sponza_roof_diff",          "sponza_roof_ddn"      },
+    //    { "vase_dif",                  "vase_ddn"             },
+    //    { "vase_hanging",              "vase_hanging_ddn"     },
+    //    { "vase_plant",                ""                     }, // no normal
+    //    { "vase_round",                "vase_round_ddn"       },
+    //};
 
     c_mesh* sponza_meshes[sponza_mesh_material_count];
     c_material* sponza_materials[sponza_mesh_material_count];
     for (dword i = 0; i < sponza_mesh_material_count; i++)
     {
         wchar_t mesh_path[MAX_PATH] = {};
-        swprintf_s(mesh_path, MAX_PATH, L"assets\\models\\sponza\\%hs.vbo", sponza_mesh_material_names[i]);
+        swprintf_s(mesh_path, MAX_PATH, L"assets\\models\\sponza_pbr\\%hs.vbo_i32", sponza_mesh_material_names[i]);
         sponza_meshes[i] = new c_mesh(g_renderer, mesh_path);
 
         dword texture_count = 0;
-        c_render_texture* diffuse_texture = nullptr;
-        c_render_texture* normal_texture = nullptr;
+        //c_render_texture* diffuse_texture = nullptr;
+        //c_render_texture* normal_texture = nullptr;
 
-        if (sponza_material_texture_names[i][0] != "")
-        {
-            wchar_t diff_texture_path[MAX_PATH] = {};
-            swprintf_s(diff_texture_path, MAX_PATH, L"assets\\textures\\sponza\\%hs.dds", sponza_material_texture_names[i][0]);
-            diffuse_texture = new c_render_texture(g_renderer, diff_texture_path, _texture_diffuse);
-            texture_count++;
-        }
-        if (sponza_material_texture_names[i][1] != "")
-        {
-            wchar_t norm_texture_path[MAX_PATH] = {};
-            swprintf_s(norm_texture_path, MAX_PATH, L"assets\\textures\\sponza\\%hs.dds", sponza_material_texture_names[i][1]);
-            normal_texture = new c_render_texture(g_renderer, norm_texture_path, _texture_normal);
-            texture_count++;
-        }
+        //if (sponza_material_texture_names[i][0] != "")
+        //{
+        //    wchar_t diff_texture_path[MAX_PATH] = {};
+        //    swprintf_s(diff_texture_path, MAX_PATH, L"assets\\textures\\sponza\\%hs.dds", sponza_material_texture_names[i][0]);
+        //    diffuse_texture = new c_render_texture(g_renderer, diff_texture_path, _texture_diffuse);
+        //    texture_count++;
+        //}
+        //if (sponza_material_texture_names[i][1] != "")
+        //{
+        //    wchar_t norm_texture_path[MAX_PATH] = {};
+        //    swprintf_s(norm_texture_path, MAX_PATH, L"assets\\textures\\sponza\\%hs.dds", sponza_material_texture_names[i][1]);
+        //    normal_texture = new c_render_texture(g_renderer, norm_texture_path, _texture_normal);
+        //    texture_count++;
+        //}
 
         sponza_materials[i] = new c_material(g_renderer, texture_count);
         sponza_materials[i]->m_properties.m_specular_power = 128.0f;
         sponza_materials[i]->m_properties.m_specular = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
 
-        if (diffuse_texture != nullptr)
-        {
-            sponza_materials[i]->assign_texture(diffuse_texture);
-            sponza_materials[i]->m_properties.m_use_diffuse_texture = true;
-        }
-        if (normal_texture != nullptr)
-        {
-            sponza_materials[i]->assign_texture(normal_texture);
-            sponza_materials[i]->m_properties.m_use_normal_texture = true;
-        }
+        //if (diffuse_texture != nullptr)
+        //{
+        //    sponza_materials[i]->assign_texture(diffuse_texture);
+        //    sponza_materials[i]->m_properties.m_use_diffuse_texture = true;
+        //}
+        //if (normal_texture != nullptr)
+        //{
+        //    sponza_materials[i]->assign_texture(normal_texture);
+        //    sponza_materials[i]->m_properties.m_use_normal_texture = true;
+        //}
     }
 
-    // plaque
-    sponza_materials[19]->m_properties.m_render_texture = true;
-
-    // bricks
-    sponza_materials[2]->m_properties.m_specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    sponza_materials[2]->m_properties.m_specular_power = 40.0f;
-
-    // fabric_a (red curved cloth)
-    sponza_materials[9]->m_properties.m_ambient = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-    // fabric_c (red flat cloth)
-    sponza_materials[10]->m_properties.m_ambient = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-    // fabric_d (blue curved cloth)
-    sponza_materials[11]->m_properties.m_ambient = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-    // fabric_g (blue flat cloth)
-    sponza_materials[14]->m_properties.m_ambient = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-    // fabric_e (green curved cloth)
-    sponza_materials[12]->m_properties.m_ambient = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-    // fabric_f (green flat cloth)
-    sponza_materials[13]->m_properties.m_ambient = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-
-    // lion background
-    sponza_materials[1]->m_properties.m_diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
-    // lion head
-    sponza_materials[18]->m_properties.m_diffuse = XMFLOAT4(1.0f, 1.0f, 0.5f, 1.0f);
-
-    // chain
-    sponza_materials[4]->m_properties.m_emissive = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
-
-    // vase hanging
-    sponza_materials[22]->m_properties.m_emissive = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+    //// plaque
+    //sponza_materials[19]->m_properties.m_render_texture = true;
+    //
+    //// bricks
+    //sponza_materials[2]->m_properties.m_specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    //sponza_materials[2]->m_properties.m_specular_power = 40.0f;
+    //
+    //// fabric_a (red curved cloth)
+    //sponza_materials[9]->m_properties.m_ambient = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+    //// fabric_c (red flat cloth)
+    //sponza_materials[10]->m_properties.m_ambient = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+    //// fabric_d (blue curved cloth)
+    //sponza_materials[11]->m_properties.m_ambient = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+    //// fabric_g (blue flat cloth)
+    //sponza_materials[14]->m_properties.m_ambient = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+    //// fabric_e (green curved cloth)
+    //sponza_materials[12]->m_properties.m_ambient = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+    //// fabric_f (green flat cloth)
+    //sponza_materials[13]->m_properties.m_ambient = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+    //
+    //// lion background
+    //sponza_materials[1]->m_properties.m_diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+    //// lion head
+    //sponza_materials[18]->m_properties.m_diffuse = XMFLOAT4(1.0f, 1.0f, 0.5f, 1.0f);
+    //
+    //// chain
+    //sponza_materials[4]->m_properties.m_emissive = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
+    //
+    //// vase hanging
+    //sponza_materials[22]->m_properties.m_emissive = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
 
     for (dword i = 0; i < sponza_mesh_material_count; i++)
     {
-        c_scene_object* scene_object = new c_scene_object(sponza_mesh_material_names[i], sponza_meshes[i], sponza_materials[i], { 0.0f, -1.1f, 0.0f }, {}, { 0.01f, 0.01f, 0.01f });
+        c_scene_object* scene_object = new c_scene_object(sponza_mesh_material_names[i], sponza_meshes[i], sponza_materials[i], { 0.0f, -1.1f, 0.0f }, {}, { 1.0f, 1.0f, 1.0f });
         g_scene->add_object(scene_object);
     }
 }

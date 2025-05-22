@@ -563,7 +563,7 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
     vbo_file.read(reinterpret_cast<char*>(&vertex_count), sizeof(dword));
     if (vertex_count == 0)
     {
-        LOG_WARNING(L"vertex count for VBO %s was 0! stopping load", file_path);
+        LOG_WARNING(L"vertex count for VBO_I32 %s was 0! stopping load", file_path);
         s_geometry_resources empty_resources = {};
         *out_resources = empty_resources;
         return false;
@@ -572,7 +572,7 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
     vbo_file.read(reinterpret_cast<char*>(&index_count), sizeof(dword));
     if (index_count == 0)
     {
-        LOG_WARNING(L"index count for VBO %s was 0! stopping load", file_path);
+        LOG_WARNING(L"index count for VBO_I32 %s was 0! stopping load", file_path);
         s_geometry_resources empty_resources = {};
         *out_resources = empty_resources;
         return false;
@@ -581,15 +581,15 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
     vertex_part* vertices = new vertex_part[vertex_count];
     vbo_file.read(reinterpret_cast<char*>(vertices), sizeof(vertex_part) * vertex_count);
 
-    uword* indices = new uword[index_count];
-    vbo_file.read(reinterpret_cast<char*>(indices), sizeof(uword) * index_count);
+    dword* indices32 = new dword[index_count];
+    vbo_file.read(reinterpret_cast<char*>(indices32), sizeof(dword) * index_count);
 
     // conversion to full vertex type & 32 bit index buffer
-    dword* indices32 = new dword[index_count];
-    for (dword i = 0; i < index_count; i++)
-    {
-        indices32[i] = indices[i];
-    }
+    //dword* indices32 = new dword[index_count];
+    //for (dword i = 0; i < index_count; i++)
+    //{
+    //    indices32[i] = indices[i];
+    //}
     vertex* full_vertices = new vertex[vertex_count];
     for (dword i = 0; i < vertex_count; i++)
     {
@@ -601,7 +601,7 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
 
     // free memory
     delete[] vertices;
-    delete[] indices;
+    //delete[] indices;
     delete[] indices32;
     delete[] full_vertices;
 

@@ -49,7 +49,7 @@ public:
 	bool create_geometry(vertex vertices[], dword vertices_size, dword indices[], dword indices_size, s_geometry_resources* const out_resources) override;
 	// create a mesh from a simple mesh & index buffer
 	bool create_simple_geometry(simple_vertex vertices[], dword vertices_size, s_geometry_resources* const out_resources);
-	// Load a geometry data from a .VBO file
+	// Load a geometry data from a .VBO_I32 file
 	bool load_model(const wchar_t* const file_path, s_geometry_resources* const out_resources) override;
 	// Load a vertex & pixel shader from a .hlsl file
 	bool create_shader(const wchar_t* vs_path, const char* vs_name, const wchar_t* ps_path, const char* ps_name, const e_shader_input input_type, s_shader_resources* out_resources) override;
