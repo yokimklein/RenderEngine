@@ -144,7 +144,6 @@ void main_init()
     );
     g_scene->add_object(cube_object);
 
-    // 25 diff, 19 norm
     constexpr const char* sponza_mesh_material_names[] =
     {
         "arch_stone_wall_01",

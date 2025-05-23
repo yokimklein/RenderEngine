@@ -44,7 +44,9 @@ float4 ps_albedo(vs_output input)
     if (material.use_albedo_texture)
 	{
 		// Convert sRGB to linear
-        albedo = pow(texture_albedo.Sample(sampler_linear, input.tex_coord), 2.2f);
+        // albedo = pow(texture_albedo.Sample(sampler_linear, input.tex_coord), 2.2f);
+		
+        albedo = texture_albedo.Sample(sampler_linear, input.tex_coord);
         
         // hack to remove masks from textures - TODO: proper transparency
 		// TODO: adjust this to work with deferred
