@@ -240,8 +240,8 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
     </CopyFileToFolders>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="assets\shaders\shading.hlsl">
-      <FileType>Document</FileType>
+    <CopyFileToFolders Include="assets\shaders\old_shading.hlsl">
+      <FileType>HLSL</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
@@ -254,42 +254,35 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
       <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">false</IncludeInUnityFile>
     </ClCompile>
     <CopyFileToFolders Include="assets\shaders\default_vs.hlsl">
-      <FileType>Document</FileType>
+      <FileType>HLSL</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
     </CopyFileToFolders>
     <CopyFileToFolders Include="assets\shaders\deferred.hlsl">
-      <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="assets\shaders\lighting.hlsl">
-      <FileType>Document</FileType>
+      <FileType>HLSL</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
     </CopyFileToFolders>
     <CopyFileToFolders Include="assets\shaders\screen_quad.hlsl">
-      <FileType>Document</FileType>
+      <FileType>HLSL</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
     </CopyFileToFolders>
     <CopyFileToFolders Include="assets\shaders\texcam.hlsl">
-      <FileType>Document</FileType>
+      <FileType>HLSL</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
     </CopyFileToFolders>
     <CopyFileToFolders Include="assets\shaders\depth_of_field.hlsl">
-      <FileType>Document</FileType>
+      <FileType>HLSL</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
@@ -398,20 +391,45 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="assets\shaders\constants.hlsl">
-      <FileType>Document</FileType>
+      <FileType>HLSL</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
     </CopyFileToFolders>
     <CopyFileToFolders Include="assets\shaders\gaussian_blur.hlsl">
-      <FileType>Document</FileType>
+      <FileType>HLSL</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
     </CopyFileToFolders>
     <CopyFileToFolders Include="assets\shaders\post_processing.hlsl">
+      <FileType>HLSL</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="assets\shaders\lighting.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="assets\shaders\old_lighting.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\pbr.hlsl">
       <FileType>Document</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>

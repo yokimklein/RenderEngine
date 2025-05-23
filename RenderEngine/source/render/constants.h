@@ -4,7 +4,7 @@
 enum e_render_pass
 {
 	_render_pass_deferred,
-	_render_pass_lighting,
+	_render_pass_pbr,
 	_render_pass_texcam,
 	_render_pass_post_processing,
 
@@ -14,12 +14,10 @@ enum e_render_pass
 enum e_gbuffers
 {
 	_gbuffer_albedo,
-	_gbuffer_specular,
+	_gbuffer_roughness,
+	_gbuffer_metallic,
 	_gbuffer_normal,
 	_gbuffer_position,
-	_gbuffer_emissive,
-	_gbuffer_ambient,
-	_gbuffer_diffuse,
 
 	k_gbuffer_count
 };
@@ -27,9 +25,9 @@ static const char* const get_gbuffer_name(const e_gbuffers buffer_type);
 
 enum e_light_buffers
 {
-	_light_buffer_diffuse,
-	_light_buffer_specular,
-	_light_buffer_ambient,
+	//_light_buffer_diffuse,
+	//_light_buffer_specular,
+	//_light_buffer_ambient,
 
 	k_light_buffer_count
 };

@@ -135,9 +135,13 @@ public:
 	virtual bool create_shader(const wchar_t* vs_path, const char* vs_name, const wchar_t* ps_path, const char* ps_name, const e_shader_input input_type, s_shader_resources* out_resources) = 0;
 	virtual qword get_gbuffer_textureid(e_gbuffers gbuffer_type) const = 0;
 
+	// Rasterises when true, ray traces when false
+	bool m_raster;
+
 protected:
 	s_object_cb m_object_cb; // cb per object
 	s_material_properties_cb m_material_properties_cb;
 	s_light_properties_cb m_light_properties_cb;
 	s_post_parameters_cb m_blur_parameters_cb;
+
 };

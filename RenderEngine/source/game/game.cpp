@@ -115,23 +115,19 @@ void main_init()
 	//c_mesh* cube_model = new c_mesh(g_renderer, cube_vertices, sizeof(cube_vertices), cube_indices, sizeof(cube_indices));
 	c_mesh* cube_model = new c_mesh(g_renderer, L"assets\\models\\cube.vbo_i32");
 
-    c_material* cube_material = new c_material(g_renderer, 3);
-    cube_material->m_properties.m_diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    cube_material->m_properties.m_specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    cube_material->m_properties.m_specular_power = 128.0f;
+    c_material* cube_material = new c_material(g_renderer, 2);
+    cube_material->m_properties.m_albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     //cube_material->m_properties.m_ambient = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
-    cube_material->m_properties.m_use_diffuse_texture = true;
-    cube_material->m_properties.m_use_specular_texture = true;
+    cube_material->m_properties.m_use_albedo_texture = true;
     cube_material->m_properties.m_use_normal_texture = true;
     cube_material->m_properties.m_render_texture = true;
 
     // https://opengameart.org/content/free-materials-pack-34-redux
-    c_render_texture* cube_diffuse_texture = new c_render_texture(g_renderer, L"assets\\textures\\crate\\Crate_COLOR.dds", _texture_diffuse);
-    c_render_texture* cube_specular_texture = new c_render_texture(g_renderer, L"assets\\textures\\crate\\Crate_SPEC.dds", _texture_specular);
+    c_render_texture* cube_diffuse_texture = new c_render_texture(g_renderer, L"assets\\textures\\crate\\Crate_COLOR.dds", _texture_albedo);
     c_render_texture* cube_normal_texture = new c_render_texture(g_renderer, L"assets\\textures\\crate\\Crate_NRM.dds", _texture_normal);
 
     cube_material->assign_texture(cube_diffuse_texture);
-    cube_material->assign_texture(cube_specular_texture);
+    //cube_material->assign_texture(cube_specular_texture);
     cube_material->assign_texture(cube_normal_texture);
 
     // scene objects - will be cleaned up by scene destruction
@@ -149,7 +145,7 @@ void main_init()
     g_scene->add_object(cube_object);
 
     // 25 diff, 19 norm
-    constexpr const char* sponza_mesh_material_names[28] =
+    constexpr const char* sponza_mesh_material_names[] =
     {
         "arch_stone_wall_01",
         "brickwall_01",
@@ -181,34 +177,37 @@ void main_init()
         "wood_door_01"
     };
     constexpr dword sponza_mesh_material_count = _countof(sponza_mesh_material_names);
-    //constexpr const char* sponza_material_texture_names[25][2] =
-    //{
-    //    { "sponza_arch_diff",          "sponza_arch_ddn"      },
-    //    { "background",                "background_ddn"       },
-    //    { "spnza_bricks_a_diff",       "spnza_bricks_a_ddn"   },
-    //    { "sponza_ceiling_a_diff",     "sponza_ceiling_a_ddn" },
-    //    { "chain_texture",             "chain_texture_ddn"    },
-    //    { "sponza_column_a_diff",      "sponza_column_a_ddn"  },
-    //    { "sponza_column_b_diff",      "sponza_column_b_ddn"  },
-    //    { "sponza_column_c_diff",      "sponza_column_c_ddn"  },
-    //    { "sponza_details_diff",       "sponza_details_ddn"   },
-    //    { "sponza_fabric_diff",        "sponza_fabric_ddn"    }, // shares normal w/ fabric
-    //    { "sponza_curtain_diff",       "sponza_curtain_ddn"   }, // shares normal w/ curtain
-    //    { "sponza_fabric_blue_diff",   "sponza_fabric_ddn"    }, // shares normal w/ fabric
-    //    { "sponza_fabric_green_diff",  "sponza_fabric_ddn"    }, // shares normal w/ fabric
-    //    { "sponza_curtain_green_diff", "sponza_curtain_ddn"   }, // shares normal w/ curtain
-    //    { "sponza_curtain_blue_diff",  "sponza_curtain_ddn"   }, // shares normal w/ curtain
-    //    { "sponza_flagpole_diff",      "sponza_flagpole_ddn"  },
-    //    { "sponza_floor_a_diff",       "sponza_floor_a_ddn"   },
-    //    { "sponza_thorn_diff",         "sponza_thorn_ddn"     },
-    //    { "lion",                      "lion_ddn"             },
-    //    { "",                          ""                     }, // no diffuse, no normal
-    //    { "sponza_roof_diff",          "sponza_roof_ddn"      },
-    //    { "vase_dif",                  "vase_ddn"             },
-    //    { "vase_hanging",              "vase_hanging_ddn"     },
-    //    { "vase_plant",                ""                     }, // no normal
-    //    { "vase_round",                "vase_round_ddn"       },
-    //};
+    constexpr const char* sponza_material_texture_names[][4] =
+    {
+        { "arch_stone_wall_01_BaseColor",   "arch_stone_wall_01_Normal",    "arch_stone_wall_01_Roughness",     "arch_stone_wall_01_Metalness"	 	},
+        { "brickwall_01_BaseColor",         "brickwall_01_Normal",          "brickwall_01_Roughness",     		"brickwall_01_Metalness" 	 	    },
+        { "brickwall_02_BaseColor",         "brickwall_02_Normal",          "brickwall_02_Roughness",     		"brickwall_02_Metalness" 			},
+        { "ceiling_plaster_01_BaseColor",   "ceiling_plaster_01_Normal",    "ceiling_plaster_01_Roughness",     "ceiling_plaster_01_Metalness" 		},
+        { "ceiling_plaster_02_BaseColor",   "ceiling_plaster_02_Normal",    "ceiling_plaster_02_Roughness",     "ceiling_plaster_02_Metalness" 		},
+        { "col_1stfloor_BaseColor",         "col_1stfloor_Normal",          "col_1stfloor_Roughness",     		"col_1stfloor_Metalness" 			},
+        { "col_brickwall_01_BaseColor",     "col_brickwall_01_Normal",      "col_brickwall_01_Roughness",     	"col_brickwall_01_Metalness" 		},
+        { "col_head_1stfloor_BaseColor",    "col_head_1stfloor_Normal",     "col_head_1stfloor_Roughness",     	"col_head_1stfloor_Metalness" 		},
+        { "col_head_2ndfloor_02_BaseColor", "col_head_2ndfloor_02_Normal",  "col_head_2ndfloor_02_Roughness",	"col_head_2ndfloor_02_Metalness"	},
+        { "col_head_2ndfloor_03_BaseColor", "col_head_2ndfloor_03_Normal",  "col_head_2ndfloor_03_Roughness",	"col_head_2ndfloor_03_Metalness"	},
+        { "dirt_decal_01_alpha", "", "", "" },
+        { "door_stoneframe_01_BaseColor",   "door_stoneframe_01_Normal",    "door_stoneframe_01_Roughness",     "door_stoneframe_01_Metalness" 		},
+        { "door_stoneframe_02_BaseColor",   "door_stoneframe_02_Normal",    "door_stoneframe_02_Roughness",     "door_stoneframe_02_Metalness" 		},
+        { "floor_tiles_01_BaseColor",       "floor_tiles_01_Normal",        "floor_tiles_01_Roughness",     	"floor_tiles_01_Metalness" 			},
+        { "", "", "", "" }, // glass
+        { "", "", "", "" }, // lamp glass
+        { "", "", "", "" }, // light bulb
+        { "metal_door_01_BaseColor",        "metal_door_01_Normal",         "metal_door_01_Roughness",     		"metal_door_01_Metalness" 			},
+        { "ornament_01_BaseColor",          "ornament_01_Normal",           "ornament_01_Roughness",     		"ornament_01_Metalness" 			},
+        { "lionhead_01_BaseColor",          "lionhead_01_Normal",           "lionhead_01_Roughness",     		"lionhead_01_Metalness" 			},
+        { "roof_tiles_01_BaseColor",        "roof_tiles_01_Normal",         "roof_tiles_01_Roughness",     		"roof_tiles_01_Metalness" 			},
+        { "stone_01_tile_BaseColor",        "stone_01_tile_Normal",         "stone_01_tile_Roughness",     		"stone_01_tile_Metalness" 			},
+        { "stones_2ndfloor_01_BaseColor",   "stones_2ndfloor_01_Normal",    "stones_2ndfloor_01_Roughness",     "stones_2ndfloor_01_Metalness" 		},
+        { "stone_trims_01_BaseColor",       "stone_trims_01_Normal",        "stone_trims_01_Roughness",     	"stone_trims_01_Metalness" 			},
+        { "stone_trims_02_BaseColor",       "stone_trims_02_Normal",        "stone_trims_02_Roughness",     	"stone_trims_02_Metalness" 			},
+        { "window_frame_01_BaseColor",      "window_frame_01_Normal",       "window_frame_01_Roughness",     	"window_frame_01_Metalness" 		},
+        { "wood_tile_01_BaseColor",         "wood_tile_01_Normal",          "wood_tile_01_Roughness",     		"wood_tile_01_Metalness" 			},
+        { "wood_door_01_BaseColor",         "wood_door_01_Normal",          "wood_door_01_Roughness",     		"wood_door_01_Metalness" 			},
+    };
 
     c_mesh* sponza_meshes[sponza_mesh_material_count];
     c_material* sponza_materials[sponza_mesh_material_count];
@@ -219,70 +218,63 @@ void main_init()
         sponza_meshes[i] = new c_mesh(g_renderer, mesh_path);
 
         dword texture_count = 0;
-        //c_render_texture* diffuse_texture = nullptr;
-        //c_render_texture* normal_texture = nullptr;
+        c_render_texture* albedo_texture = nullptr;
+        c_render_texture* normal_texture = nullptr;
+        c_render_texture* roughness_texture = nullptr;
+        c_render_texture* metallic_texture = nullptr;
 
-        //if (sponza_material_texture_names[i][0] != "")
-        //{
-        //    wchar_t diff_texture_path[MAX_PATH] = {};
-        //    swprintf_s(diff_texture_path, MAX_PATH, L"assets\\textures\\sponza\\%hs.dds", sponza_material_texture_names[i][0]);
-        //    diffuse_texture = new c_render_texture(g_renderer, diff_texture_path, _texture_diffuse);
-        //    texture_count++;
-        //}
-        //if (sponza_material_texture_names[i][1] != "")
-        //{
-        //    wchar_t norm_texture_path[MAX_PATH] = {};
-        //    swprintf_s(norm_texture_path, MAX_PATH, L"assets\\textures\\sponza\\%hs.dds", sponza_material_texture_names[i][1]);
-        //    normal_texture = new c_render_texture(g_renderer, norm_texture_path, _texture_normal);
-        //    texture_count++;
-        //}
+        if (sponza_material_texture_names[i][0] != "")
+        {
+            wchar_t diff_texture_path[MAX_PATH] = {};
+            swprintf_s(diff_texture_path, MAX_PATH, L"assets\\textures\\sponza_pbr\\%hs.dds", sponza_material_texture_names[i][0]);
+            albedo_texture = new c_render_texture(g_renderer, diff_texture_path, _texture_albedo);
+            texture_count++;
+        }
+        if (sponza_material_texture_names[i][1] != "")
+        {
+            wchar_t norm_texture_path[MAX_PATH] = {};
+            swprintf_s(norm_texture_path, MAX_PATH, L"assets\\textures\\sponza_pbr\\%hs.dds", sponza_material_texture_names[i][1]);
+            normal_texture = new c_render_texture(g_renderer, norm_texture_path, _texture_normal);
+            texture_count++;
+        }
+        if (sponza_material_texture_names[i][2] != "")
+        {
+            wchar_t roughness_texture_path[MAX_PATH] = {};
+            swprintf_s(roughness_texture_path, MAX_PATH, L"assets\\textures\\sponza_pbr\\%hs.dds", sponza_material_texture_names[i][2]);
+            roughness_texture = new c_render_texture(g_renderer, roughness_texture_path, _texture_roughness);
+            texture_count++;
+        }
+        if (sponza_material_texture_names[i][3] != "")
+        {
+            wchar_t metallic_texture_path[MAX_PATH] = {};
+            swprintf_s(metallic_texture_path, MAX_PATH, L"assets\\textures\\sponza_pbr\\%hs.dds", sponza_material_texture_names[i][3]);
+            metallic_texture = new c_render_texture(g_renderer, metallic_texture_path, _texture_metallic);
+            texture_count++;
+        }
 
         sponza_materials[i] = new c_material(g_renderer, texture_count);
-        sponza_materials[i]->m_properties.m_specular_power = 128.0f;
-        sponza_materials[i]->m_properties.m_specular = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
 
-        //if (diffuse_texture != nullptr)
-        //{
-        //    sponza_materials[i]->assign_texture(diffuse_texture);
-        //    sponza_materials[i]->m_properties.m_use_diffuse_texture = true;
-        //}
-        //if (normal_texture != nullptr)
-        //{
-        //    sponza_materials[i]->assign_texture(normal_texture);
-        //    sponza_materials[i]->m_properties.m_use_normal_texture = true;
-        //}
+        if (albedo_texture != nullptr)
+        {
+            sponza_materials[i]->assign_texture(albedo_texture);
+            sponza_materials[i]->m_properties.m_use_albedo_texture = true;
+        }
+        if (normal_texture != nullptr)
+        {
+            sponza_materials[i]->assign_texture(normal_texture);
+            sponza_materials[i]->m_properties.m_use_normal_texture = true;
+        }
+        if (roughness_texture != nullptr)
+        {
+            sponza_materials[i]->assign_texture(roughness_texture);
+            sponza_materials[i]->m_properties.m_use_roughness_texture = true;
+        }
+        if (metallic_texture != nullptr)
+        {
+            sponza_materials[i]->assign_texture(metallic_texture);
+            sponza_materials[i]->m_properties.m_use_metallic_texture = true;
+        }
     }
-
-    //// plaque
-    //sponza_materials[19]->m_properties.m_render_texture = true;
-    //
-    //// bricks
-    //sponza_materials[2]->m_properties.m_specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    //sponza_materials[2]->m_properties.m_specular_power = 40.0f;
-    //
-    //// fabric_a (red curved cloth)
-    //sponza_materials[9]->m_properties.m_ambient = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-    //// fabric_c (red flat cloth)
-    //sponza_materials[10]->m_properties.m_ambient = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-    //// fabric_d (blue curved cloth)
-    //sponza_materials[11]->m_properties.m_ambient = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-    //// fabric_g (blue flat cloth)
-    //sponza_materials[14]->m_properties.m_ambient = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-    //// fabric_e (green curved cloth)
-    //sponza_materials[12]->m_properties.m_ambient = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-    //// fabric_f (green flat cloth)
-    //sponza_materials[13]->m_properties.m_ambient = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-    //
-    //// lion background
-    //sponza_materials[1]->m_properties.m_diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
-    //// lion head
-    //sponza_materials[18]->m_properties.m_diffuse = XMFLOAT4(1.0f, 1.0f, 0.5f, 1.0f);
-    //
-    //// chain
-    //sponza_materials[4]->m_properties.m_emissive = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
-    //
-    //// vase hanging
-    //sponza_materials[22]->m_properties.m_emissive = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
 
     for (dword i = 0; i < sponza_mesh_material_count; i++)
     {

@@ -20,9 +20,9 @@ enum e_render_targets
 	// Deferred rendering targets - DO NOT MOVE THIS
 	_render_target_deferred = 0,
 
-	_render_target_lighting,
+	_render_target_pbr,
 
-	_render_target_shading,
+	//_render_target_shading,
 
 	_render_target_texcams,
 

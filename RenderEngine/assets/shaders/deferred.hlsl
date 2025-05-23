@@ -2,27 +2,24 @@
 
 SamplerState sampler_linear : register(s0); // this is actually a static sampler?
 
-Texture2D texture_diffuse	: register(t0);
-Texture2D texture_specular	: register(t1);
-Texture2D texture_normal	: register(t2);
+Texture2D texture_albedo	: register(t0);
+Texture2D texture_roughness	: register(t1);
+Texture2D texture_metallic	: register(t2);
+Texture2D texture_normal	: register(t3);
 
 struct material_data
 {
-	float4 emissive;
+	float4 albedo;
 							        //----------------------------------- (16 byte boundary)
-	float4 ambient;
+    float roughness;
+    float metallic;
+	bool use_albedo_texture;
+	bool use_roughness_texture;
 							        //------------------------------------(16 byte boundary)
-	float4 diffuse;
-							        //----------------------------------- (16 byte boundary)
-	float4 specular;
-							        //----------------------------------- (16 byte boundary)
-	float specular_power;
-	bool use_diffuse_texture;
-	bool use_specular_texture;
+	bool use_metallic_texture;
 	bool use_normal_texture;
-							        //----------------------------------- (16 byte boundary)
 	bool render_texture;
-	float3 padding;
+	float padding;
 							        //----------------------------------- (16 byte boundary)
 };
 
@@ -34,21 +31,20 @@ cbuffer material_cb : register(b1)
 struct ps_deferred_gbuffers
 {
 	float4 albedo			: SV_Target0;
-	float4 specular			: SV_Target1;
-	float4 normal			: SV_Target2;
-	float4 position			: SV_Target3;
-	float4 emissive			: SV_Target4;
-	float4 ambient			: SV_Target5;
-	float4 diffuse			: SV_Target6;
+	float4 roughness		: SV_Target1;
+	float4 metallic			: SV_Target2;
+	float4 normal			: SV_Target3;
+	float4 position			: SV_Target4;
 };
 
 float4 ps_albedo(vs_output input)
 {
     // Retrieve colour from material/diffuse map
 	float4 albedo;
-	if (material.use_diffuse_texture)
+    if (material.use_albedo_texture)
 	{
-		albedo = texture_diffuse.Sample(sampler_linear, input.tex_coord);
+		// Convert sRGB to linear
+        albedo = pow(texture_albedo.Sample(sampler_linear, input.tex_coord), 2.2f);
         
         // hack to remove masks from textures - TODO: proper transparency
 		// TODO: adjust this to work with deferred
@@ -64,23 +60,34 @@ float4 ps_albedo(vs_output input)
 	return albedo;
 }
 
-float4 ps_specular(vs_output input)
+float4 ps_roughness(vs_output input)
 {
-    // Retrieve material specular/texture specular
-	float4 specular;
-	if (material.use_specular_texture)
-	{
-		specular = texture_specular.Sample(sampler_linear, input.tex_coord);
-	}
-	else
-	{
-		specular = material.specular;
-	}
-	
-	// Squeeze specular power down to fit within 8 bits
-    specular.a = material.specular_power / 128.0f;
-	
-	return specular;
+    // Retrieve material roughness/texture specular
+    float4 roughness;
+    if (material.use_roughness_texture)
+    {
+        roughness = texture_roughness.Sample(sampler_linear, input.tex_coord);
+    }
+    else
+    {
+        roughness = material.roughness;
+    }
+    return roughness;
+}
+
+float4 ps_metallic(vs_output input)
+{
+    // Retrieve material metallic/texture specular
+    float4 metallic;
+    if (material.use_metallic_texture)
+    {
+        metallic = texture_metallic.Sample(sampler_linear, input.tex_coord);
+    }
+    else
+    {
+        metallic = material.metallic;
+    }
+    return metallic;
 }
 
 float4 ps_normal(vs_output input)
@@ -111,12 +118,10 @@ ps_deferred_gbuffers ps_deferred(vs_output input)
     ps_deferred_gbuffers gbuffers;
     
 	gbuffers.albedo = ps_albedo(input);
-	gbuffers.specular = ps_specular(input);
+    gbuffers.roughness = ps_roughness(input);
+    gbuffers.metallic = ps_metallic(input);
 	gbuffers.normal = ps_normal(input);
 	gbuffers.position = input.position_world;
-	gbuffers.emissive = material.emissive;
-	gbuffers.ambient = material.ambient;
-	gbuffers.diffuse = material.diffuse;
     
 	return gbuffers;
 }

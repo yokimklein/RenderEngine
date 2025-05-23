@@ -5,33 +5,29 @@
 struct s_material
 {
 	s_material()
-		: m_emissive(0.0f, 0.0f, 0.0f, 1.0f)
-		, m_ambient(1.0f, 1.0f, 1.0f, 1.0f)
-		, m_diffuse(1.0f, 1.0f, 1.0f, 1.0f)
-		, m_specular(0.19999996f, 0.19999996f, 0.19999996f, 1.0f)
-		, m_specular_power(7.843137f)
-		, m_use_diffuse_texture(false)
-		, m_use_specular_texture(false)
+		: m_albedo(1.0f, 1.0f, 1.0f, 1.0f)
+		, m_roughness(1.0f)
+		, m_metallic(1.0f)
+		, m_use_albedo_texture(false)
+		, m_use_roughness_texture(false)
+		, m_use_metallic_texture(false)
 		, m_use_normal_texture(false)
 		, m_render_texture(false)
-		//, m_padding()
+		, m_padding()
 	{}
 
-	vector4d m_emissive;
+	vector4d m_albedo;
 	//--------------------------- (16 byte boundary)
-	vector4d m_ambient;
+	float m_roughness;
+	float m_metallic;
+	dword m_use_albedo_texture;
+	dword m_use_roughness_texture;
 	//--------------------------- (16 byte boundary)
-	vector4d m_diffuse;
 	//--------------------------- (16 byte boundary)
-	vector4d m_specular;
-	//--------------------------- (16 byte boundary)
-	float    m_specular_power;
-	dword    m_use_diffuse_texture;
-	dword    m_use_specular_texture;
-	dword    m_use_normal_texture;
-	//--------------------------- (16 byte boundary)
-	dword    m_render_texture;
-	float    m_padding[3];
+	dword m_use_metallic_texture;
+	dword m_use_normal_texture;
+	dword m_render_texture;
+	float m_padding[1];
 	//--------------------------- (16 byte boundary)
 };
 

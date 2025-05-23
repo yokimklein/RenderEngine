@@ -68,7 +68,7 @@ bool c_renderer_dx12::initialise_device_adapter()
             continue;
         }
         // Break out if we find a DX12 supported device
-        if (SUCCEEDED(D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_0, _uuidof(ID3D12Device), nullptr)))
+        if (SUCCEEDED(D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_1, _uuidof(ID3D12Device), nullptr)))
         {
             LOG_MESSAGE(L"Adapter found: %ws", adapter_desc.Description);
             adapter_found = true;
@@ -84,7 +84,7 @@ bool c_renderer_dx12::initialise_device_adapter()
     }
 
     // Create device from found adapter
-    HRESULT hr = D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_device));
+    HRESULT hr = D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_device));
     if (!HRESULT_VALID(hr)) { return K_FAILURE; }
 
     const bool adapter_valid = m_adapter != nullptr;
@@ -93,6 +93,19 @@ bool c_renderer_dx12::initialise_device_adapter()
     {
         LOG_ERROR(L"Adapter was nullptr!");
         return K_FAILURE;
+    }
+
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+    m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+
+    if (options5.RaytracingTier < D3D12_RAYTRACING_TIER_1_0)
+    {
+        LOG_WARNING("Raytracing not supported by this device!");
+    }
+    else
+    {
+        LOG_MESSAGE("Device supports raytracing");
     }
 
     return K_SUCCESS;
@@ -109,6 +122,7 @@ bool c_renderer_dx12::initialise_command_queue()
     return K_SUCCESS;
 }
 
+// TODO: reinitialise swapchain on window resize
 bool c_renderer_dx12::initialise_swapchain(const HWND hWnd)
 {
     HRESULT hr = S_OK;
@@ -159,8 +173,8 @@ bool c_renderer_dx12::initialise_render_target_view()
     HRESULT hr = S_OK;
 
     m_render_targets[_render_target_deferred] = new c_render_target(m_device, m_shader_inputs[_input_deferred], _render_target_deferred);
-    m_render_targets[_render_target_lighting] = new c_render_target(m_device, m_shader_inputs[_input_lighting], _render_target_lighting);
-    m_render_targets[_render_target_shading] = new c_render_target(m_device, m_shader_inputs[_input_shading], _render_target_shading);
+    m_render_targets[_render_target_pbr] = new c_render_target(m_device, m_shader_inputs[_input_pbr], _render_target_pbr);
+    //m_render_targets[_render_target_shading] = new c_render_target(m_device, m_shader_inputs[_input_shading], _render_target_shading);
     m_render_targets[_render_target_texcams] = new c_render_target(m_device, m_shader_inputs[_input_texcam], _render_target_texcams);
 
     for (dword i = k_default_render_target_count; i <= k_render_target_post_reserved; i++)
@@ -250,12 +264,10 @@ bool c_renderer_dx12::initialise_input_layouts()
     {
         // UNORM - Unsigned normalised, will be between 0.0f-1.0f
         DXGI_FORMAT_R8G8B8A8_UNORM, // albedo
-        DXGI_FORMAT_R8G8B8A8_UNORM, // specular
+        DXGI_FORMAT_R8_UNORM, // roughness
+        DXGI_FORMAT_R8_UNORM, // metallic
         DXGI_FORMAT_R16G16B16A16_FLOAT, // normal
         DXGI_FORMAT_R32G32B32A32_FLOAT,  // position
-        DXGI_FORMAT_R8G8B8A8_UNORM, // emissive
-        DXGI_FORMAT_R8G8B8A8_UNORM, // ambient
-        DXGI_FORMAT_R8G8B8A8_UNORM // diffuse
     };
     static_assert(_countof(deferred_render_target_formats) == k_gbuffer_count);
     m_shader_inputs[_input_deferred] = new c_shader_input
@@ -268,20 +280,15 @@ bool c_renderer_dx12::initialise_input_layouts()
         true, D3D12_COMPARISON_FUNC_LESS
     );
 
-    // LIGHTING SHADER INPUTS
+    // PBR SHADER INPUTS
     c_constant_buffer* constant_buffers_lighting[k_lighting_constant_buffer_count] =
     {
-        new c_constant_buffer(m_device, _render_pass_lighting, _lighting_constant_buffer_lights, sizeof(s_light_properties_cb), D3D12_SHADER_VISIBILITY_PIXEL)
+        new c_constant_buffer(m_device, _render_pass_pbr, _lighting_constant_buffer_lights, sizeof(s_light_properties_cb), D3D12_SHADER_VISIBILITY_PIXEL)
     };
     static_assert(_countof(constant_buffers_lighting) == k_lighting_constant_buffer_count);
     CD3DX12_DESCRIPTOR_RANGE lighting_texture_range[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_lighting_textures_count, 0 } };
-    DXGI_FORMAT lighting_render_target_formats[] =
-    {
-        DXGI_FORMAT_R8G8B8A8_UNORM,
-        DXGI_FORMAT_R8G8B8A8_UNORM,
-        DXGI_FORMAT_R8G8B8A8_UNORM
-    };
-    m_shader_inputs[_input_lighting] = new c_shader_input
+    DXGI_FORMAT lighting_render_target_formats[] = { DXGI_FORMAT_R8G8B8A8_UNORM };
+    m_shader_inputs[_input_pbr] = new c_shader_input
     (
         m_device, k_lighting_textures_count,
         constant_buffers_lighting, _countof(constant_buffers_lighting),
@@ -292,17 +299,17 @@ bool c_renderer_dx12::initialise_input_layouts()
     );
 
     // SHADING SHADER INPUTS
-    CD3DX12_DESCRIPTOR_RANGE shading_texture_range[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_shading_textures_count, 0 } };
-    DXGI_FORMAT shading_render_target_formats[] = { DXGI_FORMAT_R8G8B8A8_UNORM };
-    m_shader_inputs[_input_shading] = new c_shader_input
-    (
-        m_device, k_shading_textures_count,
-        nullptr, 0,
-        simple_vertex_input_elements, _countof(simple_vertex_input_elements),
-        shading_texture_range, _countof(shading_texture_range),
-        shading_render_target_formats, _countof(shading_render_target_formats),
-        false, D3D12_COMPARISON_FUNC_NONE
-    );
+    //CD3DX12_DESCRIPTOR_RANGE shading_texture_range[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_shading_textures_count, 0 } };
+    //DXGI_FORMAT shading_render_target_formats[] = { DXGI_FORMAT_R8G8B8A8_UNORM };
+    //m_shader_inputs[_input_shading] = new c_shader_input
+    //(
+    //    m_device, k_shading_textures_count,
+    //    nullptr, 0,
+    //    simple_vertex_input_elements, _countof(simple_vertex_input_elements),
+    //    shading_texture_range, _countof(shading_texture_range),
+    //    shading_render_target_formats, _countof(shading_render_target_formats),
+    //    false, D3D12_COMPARISON_FUNC_NONE
+    //);
 
     // TEXCAM SHADER INPUTS
     // this is a range of descriptors inside a descriptor heap, allows use of resources from multiple heaps
@@ -343,8 +350,8 @@ bool c_renderer_dx12::initialise_input_layouts()
     );
 
     m_deferred_shader = new c_shader(this, L"assets\\shaders\\default_vs.hlsl", "vs_main", L"assets\\shaders\\deferred.hlsl", "ps_deferred", _input_deferred);
-    m_lighting_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\lighting.hlsl", "ps_deferred_lighting", _input_lighting);
-    m_shading_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\shading.hlsl", "ps_deferred_shading", _input_shading);
+    m_pbr_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\pbr.hlsl", "ps_deferred_pbr", _input_pbr);
+    //m_shading_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\shading.hlsl", "ps_deferred_shading", _input_shading);
     m_texcam_shader = new c_shader(this, L"assets\\shaders\\default_vs.hlsl", "vs_main", L"assets\\shaders\\texcam.hlsl", "ps_sample_texture", _input_texcam);
     
     m_post_shaders[_post_processing_default] = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\post_processing.hlsl", "ps_tex_to_screen", _input_post_processing);
@@ -447,6 +454,7 @@ bool c_renderer_dx12::create_shader(const wchar_t* vs_path, const char* vs_name,
     pso_desc.SampleDesc = sample_desc; // must be the same sample description as the swapchain and depth/stencil buffer
     pso_desc.SampleMask = UINT_MAX; // sample mask has to do with multi-sampling. 0xffffffff means point sampling is done
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); // a default rasterizer state
+    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT; // Cull front instead of back for right-handed coordinate models
     pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT); // a default blent state
     pso_desc.NumRenderTargets = shader_input->m_render_target_count;
     pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // a default depth stencil state
@@ -542,6 +550,7 @@ bool c_renderer_dx12::create_simple_geometry(simple_vertex vertices[], dword ver
     return result;
 }
 
+// Loads right-handed models (engine is left handed)
 bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_resources* const out_resources)
 {
     assert(out_resources != nullptr);
@@ -593,8 +602,29 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
     vertex* full_vertices = new vertex[vertex_count];
     for (dword i = 0; i < vertex_count; i++)
     {
+        // Convert from right to left handed
+        vertices[i].position.z *= -1.0f;
+        vertices[i].tex_coord.x = 1.0f - vertices[i].tex_coord.x;
+        vertices[i].tex_coord.y = 1.0f - vertices[i].tex_coord.y;
+        vertices[i].normal.z *= -1.0f;
+
         full_vertices[i].vertex = vertices[i];
     }
+
+    // Convert from right to left handed
+    //for (dword i = 0; i < (index_count / 3); i += 3)
+    //{
+    //    dword indices[2] = { indices32[i], indices32[i + 2] };
+    //    indices32[i] = indices[1];
+    //    indices32[i + 2] = indices[0];
+    //}
+
+    //for (dword i = 0; i < (vertex_count / 3); i += 3)
+    //{
+    //    vertex vertices[2] = { full_vertices[i], full_vertices[i + 2] };
+    //    full_vertices[i] = vertices[1];
+    //    full_vertices[i + 2] = vertices[0];
+    //}
 
     const bool geometry_loaded = this->create_geometry(full_vertices, vertex_count * sizeof(vertex), indices32, index_count * sizeof(dword), out_resources);
     assert(geometry_loaded);
@@ -614,10 +644,10 @@ bool c_renderer_dx12::initialise_default_geometry()
 
     simple_vertex vertices[] =
     {
-        { { -1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f } }, // bottom left
         { { -1.0f,  1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } }, // top left
+        { { -1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f } }, // bottom left
+        { {  1.0f,  1.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } }, // top right
         { {  1.0f, -1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } }, // bottom right
-        { {  1.0f,  1.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } }  // top right
     };
 
     const bool creation_succeeded = this->create_simple_geometry(vertices, sizeof(vertices), &m_screen_quad);
@@ -848,7 +878,7 @@ c_renderer_dx12::~c_renderer_dx12()
     }
 
     delete m_deferred_shader;
-    delete m_lighting_shader;
+    delete m_pbr_shader;
     delete m_texcam_shader;
     for (dword i = 0; i < k_post_processing_passes; i++)
     {
@@ -947,7 +977,10 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
 
     m_command_list->RSSetViewports(1, &m_viewport); // set the viewports
     m_command_list->RSSetScissorRects(1, &m_scissor_rect); // set the scissor rects
-    m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
+    if (m_raster)
+    {
+        m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
+    }
 
     // Deferred pass
     c_render_target* deferred_target = m_render_targets[_render_target_deferred];
@@ -980,61 +1013,64 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
         this->set_constant_buffer_view(deferred_target, _deferred_constant_buffer_object, object_index);
         this->set_constant_buffer_view(deferred_target, _deferred_constant_buffer_materials, object_index);
 
-        // Set geometry buffers & draw
-        const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
-        m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
-        m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
-        m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
+        if (m_raster)
+        {
+            // Set geometry buffers & draw
+            const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
+            m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
+            m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
+            m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
+        }
 
         object_index++;
     }
 
-    // Lighting pass
-    c_render_target* lighting_target = m_render_targets[_render_target_lighting];
-    lighting_target->begin_render(m_command_list, m_frame_index);
-    e_gbuffers lighting_gbuffers[k_lighting_textures_count] = { _gbuffer_position, _gbuffer_normal, _gbuffer_ambient, _gbuffer_diffuse, _gbuffer_specular };
+    // PBR + Lighting pass
+    c_render_target* pbr_target = m_render_targets[_render_target_pbr];
+    pbr_target->begin_render(m_command_list, m_frame_index);
+    e_gbuffers pbr_gbuffers[k_lighting_textures_count] = { _gbuffer_position, _gbuffer_normal, _gbuffer_albedo, _gbuffer_roughness, _gbuffer_metallic };
     for (dword i = 0; i < k_lighting_textures_count; i++)
     {
-        ID3D12Resource* deferred_texture = deferred_target->get_frame_resource(lighting_gbuffers[i], m_frame_index);
-        lighting_target->assign_texture(deferred_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
+        ID3D12Resource* deferred_texture = deferred_target->get_frame_resource(pbr_gbuffers[i], m_frame_index);
+        pbr_target->assign_texture(deferred_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
     }
-    lighting_target->begin_draw(m_command_list, m_lighting_shader, 0);
-    this->set_constant_buffer_view(lighting_target, _lighting_constant_buffer_lights, 0);
+    pbr_target->begin_draw(m_command_list, m_pbr_shader, 0);
+    this->set_constant_buffer_view(pbr_target, _lighting_constant_buffer_lights, 0);
     // Draw screen quad
     m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     m_command_list->IASetVertexBuffers(0, 1, &m_screen_quad.vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
     m_command_list->DrawInstanced(4, 1, 0, 0);
 
-    // Shading pass
-    c_render_target* shading_target = m_render_targets[_render_target_shading];
-    shading_target->begin_render(m_command_list, m_frame_index);
-    e_light_buffers shading_light_buffers[k_light_buffer_count] = { _light_buffer_ambient, _light_buffer_diffuse, _light_buffer_specular };
-    for (dword i = 0; i < _texture_shading_albedo; i++)
-    {
-        ID3D12Resource* lighting_texture = lighting_target->get_frame_resource(shading_light_buffers[i], m_frame_index);
-        shading_target->assign_texture(lighting_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
-    }
-    e_gbuffers shading_gbuffers[k_shading_textures_count - _texture_shading_albedo] = { _gbuffer_albedo, _gbuffer_emissive };
-    for (dword i = _texture_shading_albedo; i < k_shading_textures_count; i++)
-    {
-        ID3D12Resource* deferred_texture = deferred_target->get_frame_resource(shading_gbuffers[i - _texture_shading_albedo], m_frame_index);
-        shading_target->assign_texture(deferred_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
-    }
-    shading_target->begin_draw(m_command_list, m_shading_shader, 0);
-    // Draw screen quad
-    m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    m_command_list->IASetVertexBuffers(0, 1, &m_screen_quad.vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
-    m_command_list->DrawInstanced(4, 1, 0, 0);
+    //// Shading pass
+    //c_render_target* shading_target = m_render_targets[_render_target_shading];
+    //shading_target->begin_render(m_command_list, m_frame_index);
+    //e_light_buffers shading_light_buffers[k_light_buffer_count] = { _light_buffer_ambient, _light_buffer_diffuse, _light_buffer_specular };
+    //for (dword i = 0; i < _texture_shading_albedo; i++)
+    //{
+    //    ID3D12Resource* lighting_texture = lighting_target->get_frame_resource(shading_light_buffers[i], m_frame_index);
+    //    shading_target->assign_texture(lighting_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
+    //}
+    //e_gbuffers shading_gbuffers[k_shading_textures_count - _texture_shading_albedo] = { _gbuffer_albedo, _gbuffer_emissive };
+    //for (dword i = _texture_shading_albedo; i < k_shading_textures_count; i++)
+    //{
+    //    ID3D12Resource* deferred_texture = deferred_target->get_frame_resource(shading_gbuffers[i - _texture_shading_albedo], m_frame_index);
+    //    shading_target->assign_texture(deferred_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
+    //}
+    //shading_target->begin_draw(m_command_list, m_shading_shader, 0);
+    //// Draw screen quad
+    //m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    //m_command_list->IASetVertexBuffers(0, 1, &m_screen_quad.vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
+    //m_command_list->DrawInstanced(4, 1, 0, 0);
 
     // TODO: TEXCAM IS Z FIGHTING SINCE ADDING DEFERRED RENDERING - Might have something to dow ith frame resource set index 0? I'm very tired right now and probably missing something obvious
     // Texture camera objects
     // copy lighting pass target buffer into tex cam first and don't clear
     c_render_target* texcam_target = m_render_targets[_render_target_texcams];
     // Copy rendered frame into texcam view
-    TransitionResource(m_command_list, shading_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE); // transition to copy
+    TransitionResource(m_command_list, pbr_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE); // transition to copy
     TransitionResource(m_command_list, texcam_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST); // transition to copy
-    m_command_list->CopyResource(texcam_target->get_frame_resource(0, m_frame_index), shading_target->get_frame_resource(0, m_frame_index));
-    TransitionResource(m_command_list, shading_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE); // return to target
+    m_command_list->CopyResource(texcam_target->get_frame_resource(0, m_frame_index), pbr_target->get_frame_resource(0, m_frame_index));
+    TransitionResource(m_command_list, pbr_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE); // return to target
     TransitionResource(m_command_list, texcam_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
     // Copy deferred depth buffer into texcam view
     TransitionResource(m_command_list, deferred_target->get_depth_resource(m_frame_index), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -1049,16 +1085,20 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     for (const c_scene_object* const object : texcam_objects)
     {
         dword object_scene_index = texcam_object_scene_indices[texcam_index];
-        texcam_target->assign_texture(shading_target->get_frame_resource(0, m_frame_index), _texture_cam_render_target, texcam_index);
+        texcam_target->assign_texture(pbr_target->get_frame_resource(0, m_frame_index), _texture_cam_render_target, texcam_index);
         texcam_target->begin_draw(m_command_list, m_texcam_shader, texcam_index);
         this->set_constant_buffer_view(texcam_target, _texcam_constant_buffer_object, object_scene_index);
-        const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
-        m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
-        m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
-        m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
+
+        if (m_raster)
+        {
+            const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
+            m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
+            m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
+            m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
+        }
         texcam_index++;
     }
-    TransitionResource(m_command_list, shading_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    TransitionResource(m_command_list, pbr_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     // Post processing
     TransitionResource(m_command_list, texcam_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -1120,13 +1160,13 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
         CreateShaderResourceView(m_device, deferred_target->get_frame_resource(i, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
         m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
     }
-    for (dword i = k_gbuffer_count; i < k_gbuffer_count + k_light_buffer_count; i++)
-    {
-        // Ditto above
-        dword target_index = i - k_gbuffer_count;
-        CreateShaderResourceView(m_device, lighting_target->get_frame_resource(target_index, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
-        m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
-    }
+    //for (dword i = k_gbuffer_count; i < k_gbuffer_count + k_light_buffer_count; i++)
+    //{
+    //    // Ditto above
+    //    dword target_index = i - k_gbuffer_count;
+    //    CreateShaderResourceView(m_device, lighting_target->get_frame_resource(target_index, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
+    //    m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
+    //}
     {
         // SRV for depth buffer
         D3D12_SHADER_RESOURCE_VIEW_DESC depth_srv = {};
@@ -1274,7 +1314,7 @@ void c_renderer_dx12::set_material_constant_buffer(const s_material_properties_c
 }
 void c_renderer_dx12::set_lights_constant_buffer(const s_light_properties_cb& cbuffer)
 {
-    m_shader_inputs[_input_lighting]->get_constant_buffer(_lighting_constant_buffer_lights)->set_data(&cbuffer, m_frame_index, 0);
+    m_shader_inputs[_input_pbr]->get_constant_buffer(_lighting_constant_buffer_lights)->set_data(&cbuffer, m_frame_index, 0);
 }
 void c_renderer_dx12::set_post_constant_buffer(const s_post_parameters_cb& cbuffer)
 {

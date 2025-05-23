@@ -5,8 +5,8 @@
 enum e_shader_input
 {
 	_input_deferred,
-	_input_lighting,
-	_input_shading,
+	_input_pbr,
+	//_input_shading,
 	_input_texcam,
 
 	_input_post_processing,

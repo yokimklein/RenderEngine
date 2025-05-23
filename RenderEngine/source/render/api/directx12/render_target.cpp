@@ -14,8 +14,8 @@ const wchar_t* const get_render_target_name(const e_render_targets target_type)
 	constexpr const wchar_t* k_render_target_names[] =
 	{
 		L"Deferred RT",
-		L"Lighting RT",
-		L"Shading RT",
+		L"PBR RT",
+		//L"Shading RT",
 		L"Texture Camera RT",
 		L"Default Post RT",
 		L"Blur Horizontal Post RT",

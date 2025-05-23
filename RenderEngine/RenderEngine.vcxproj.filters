@@ -205,9 +205,6 @@
     <CopyFileToFolders Include="assets\shaders\deferred.hlsl">
       <Filter>Source Files</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="assets\shaders\lighting.hlsl">
-      <Filter>Source Files</Filter>
-    </CopyFileToFolders>
     <CopyFileToFolders Include="assets\shaders\screen_quad.hlsl">
       <Filter>Source Files</Filter>
     </CopyFileToFolders>
@@ -217,8 +214,11 @@
     <CopyFileToFolders Include="assets\shaders\depth_of_field.hlsl">
       <Filter>Source Files</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="assets\shaders\shading.hlsl">
+    <CopyFileToFolders Include="assets\shaders\old_shading.hlsl">
       <Filter>Source Files</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\lighting.hlsl" />
+    <CopyFileToFolders Include="assets\shaders\pbr.hlsl" />
+    <CopyFileToFolders Include="assets\shaders\old_lighting.hlsl" />
   </ItemGroup>
 </Project>

@@ -27,7 +27,7 @@ const wchar_t* const get_constant_buffer_name(const e_render_pass render_pass, c
             static_assert(_countof(k_default_buffer_names) == k_deferred_constant_buffer_count);
             return k_default_buffer_names[buffer_type];
         }
-        case _render_pass_lighting:
+        case _render_pass_pbr:
         {
             if (!IN_RANGE_COUNT(buffer_type, 0, k_lighting_constant_buffer_count)) break;
 

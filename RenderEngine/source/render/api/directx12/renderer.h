@@ -111,8 +111,8 @@ private:
 
 	// TODO: TEMPORARY, MOVE THIS!!
 	c_shader* m_deferred_shader;
-	c_shader* m_lighting_shader;
-	c_shader* m_shading_shader;
+	c_shader* m_pbr_shader;
+	//c_shader* m_shading_shader;
 	c_shader* m_texcam_shader;
 	c_shader* m_post_shaders[k_post_processing_passes];
 
