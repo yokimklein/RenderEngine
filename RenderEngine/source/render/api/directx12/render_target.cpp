@@ -17,6 +17,9 @@ const wchar_t* const get_render_target_name(const e_render_targets target_type)
 		L"PBR RT",
 		//L"Shading RT",
 		L"Texture Camera RT",
+
+        L"Raytace RT",
+
 		L"Default Post RT",
 		L"Blur Horizontal Post RT",
 		L"Blur Vertical Post RT",
@@ -89,7 +92,7 @@ c_render_target::c_render_target(ID3D12Device* const device, c_shader_input* con
                 1,
                 1,
                 0,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
+                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS // $TODO: only specify this for RT
             );
             // create render target buffers
             hr = m_device->CreateCommittedResource

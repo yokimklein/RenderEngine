@@ -105,7 +105,7 @@ bool c_renderer_dx12::initialise_device_adapter()
     }
     else
     {
-        LOG_MESSAGE("Device supports raytracing");
+        LOG_MESSAGE("Device supports raytracing tier %d", options5.RaytracingTier);
     }
 
     return K_SUCCESS;
@@ -176,6 +176,9 @@ bool c_renderer_dx12::initialise_render_target_view()
     m_render_targets[_render_target_pbr] = new c_render_target(m_device, m_shader_inputs[_input_pbr], _render_target_pbr);
     //m_render_targets[_render_target_shading] = new c_render_target(m_device, m_shader_inputs[_input_shading], _render_target_shading);
     m_render_targets[_render_target_texcams] = new c_render_target(m_device, m_shader_inputs[_input_texcam], _render_target_texcams);
+
+    // $TODO:
+    m_render_targets[_render_target_raytrace] = new c_render_target(m_device, m_shader_inputs[_input_deferred], _render_target_deferred);
 
     for (dword i = k_default_render_target_count; i <= k_render_target_post_reserved; i++)
     {
@@ -539,6 +542,7 @@ bool c_renderer_dx12::create_geometry(vertex vertices[], dword vertices_size, dw
     delete[] binormals;
 
     this->upload_geometry(sizeof(vertex), vertices, vertices_size, indices, indices_size, out_resources);
+    out_resources->vertex_count = vertex_count;
 
     return true;
 }
@@ -593,12 +597,6 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
     dword* indices32 = new dword[index_count];
     vbo_file.read(reinterpret_cast<char*>(indices32), sizeof(dword) * index_count);
 
-    // conversion to full vertex type & 32 bit index buffer
-    //dword* indices32 = new dword[index_count];
-    //for (dword i = 0; i < index_count; i++)
-    //{
-    //    indices32[i] = indices[i];
-    //}
     vertex* full_vertices = new vertex[vertex_count];
     for (dword i = 0; i < vertex_count; i++)
     {
@@ -611,27 +609,11 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
         full_vertices[i].vertex = vertices[i];
     }
 
-    // Convert from right to left handed
-    //for (dword i = 0; i < (index_count / 3); i += 3)
-    //{
-    //    dword indices[2] = { indices32[i], indices32[i + 2] };
-    //    indices32[i] = indices[1];
-    //    indices32[i + 2] = indices[0];
-    //}
-
-    //for (dword i = 0; i < (vertex_count / 3); i += 3)
-    //{
-    //    vertex vertices[2] = { full_vertices[i], full_vertices[i + 2] };
-    //    full_vertices[i] = vertices[1];
-    //    full_vertices[i + 2] = vertices[0];
-    //}
-
     const bool geometry_loaded = this->create_geometry(full_vertices, vertex_count * sizeof(vertex), indices32, index_count * sizeof(dword), out_resources);
     assert(geometry_loaded);
 
     // free memory
     delete[] vertices;
-    //delete[] indices;
     delete[] indices32;
     delete[] full_vertices;
 
@@ -977,10 +959,93 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
 
     m_command_list->RSSetViewports(1, &m_viewport); // set the viewports
     m_command_list->RSSetScissorRects(1, &m_scissor_rect); // set the scissor rects
+
+    // Raster pipeline
     if (m_raster)
     {
-        m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
+        this->update_raster(scene);
     }
+    else
+    {
+        this->update_raytrace(scene);
+    }
+
+    // Draw ImGUI
+    // Start the Dear ImGui frame
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+    ImGuizmo::SetOrthographic(false);
+    ImGuizmo::BeginFrame();
+
+    if (m_raster)
+    {
+        // Make the gbuffers available for ImGUI
+        for (dword i = 0; i < k_gbuffer_count; i++)
+        {
+            // TODO: is calling this several times a frame going to cause a memory leak?
+            CreateShaderResourceView(m_device, m_render_targets[_render_target_deferred]->get_frame_resource(i, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
+            m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
+        }
+        //for (dword i = k_gbuffer_count; i < k_gbuffer_count + k_light_buffer_count; i++)
+        //{
+        //    // Ditto above
+        //    dword target_index = i - k_gbuffer_count;
+        //    CreateShaderResourceView(m_device, lighting_target->get_frame_resource(target_index, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
+        //    m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
+        //}
+        {
+            // SRV for depth buffer
+            D3D12_SHADER_RESOURCE_VIEW_DESC depth_srv = {};
+            depth_srv.Format = DXGI_FORMAT_R32_FLOAT;
+            depth_srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            depth_srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            depth_srv.Texture2D.MipLevels = 1;
+
+            dword index = k_gbuffer_count + k_light_buffer_count;
+            ID3D12Resource* texture_resource = m_render_targets[_render_target_deferred]->get_depth_resource(m_frame_index);
+            m_device->CreateShaderResourceView(texture_resource, &depth_srv, m_imgui_descriptor_heap->get_cpu_handle(index));
+            m_gbuffer_gpu_handles[index] = m_imgui_descriptor_heap->get_gpu_handle(index);
+        }
+    }
+    else
+    {
+        // Start raster render for ImGUI
+        m_render_targets[_render_target_raytrace]->begin_render(m_command_list, m_frame_index, false);
+    }
+
+    imgui_overlay(scene, this, fps_counter);
+
+    c_render_target* final_target;
+    if (m_raster)
+    {
+        final_target = m_render_targets[k_render_target_final_raster];
+    }
+    else
+    {
+        final_target = m_render_targets[k_render_target_final_raytrace];
+    }
+
+    ID3D12DescriptorHeap* imgui_descriptor_heaps[] = { m_imgui_descriptor_heap->get_heap() };
+    m_command_list->SetDescriptorHeaps(_countof(imgui_descriptor_heaps), imgui_descriptor_heaps);
+    ImGui::Render();
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_command_list);
+
+    // prepare final frame to copy into swapchain
+    TransitionResource(m_command_list, final_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+    ID3D12Resource* final_frame = final_target->get_frame_resource(0, m_frame_index);
+    // copy final frame to swapchain buffer and get ready to present
+    m_command_list->CopyResource(m_backbuffers[m_frame_index], final_frame);
+    TransitionResource(m_command_list, final_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    TransitionResource(m_command_list, m_backbuffers[m_frame_index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+
+    hr = m_command_list->Close();
+    if (!HRESULT_VALID(hr)) { return; }
+}
+
+void c_renderer_dx12::update_raster(c_scene* const scene)
+{
+    m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
 
     // Deferred pass
     c_render_target* deferred_target = m_render_targets[_render_target_deferred];
@@ -1013,14 +1078,11 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
         this->set_constant_buffer_view(deferred_target, _deferred_constant_buffer_object, object_index);
         this->set_constant_buffer_view(deferred_target, _deferred_constant_buffer_materials, object_index);
 
-        if (m_raster)
-        {
-            // Set geometry buffers & draw
-            const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
-            m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
-            m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
-            m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
-        }
+        // Set geometry buffers & draw
+        const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
+        m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
+        m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
+        m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
 
         object_index++;
     }
@@ -1089,13 +1151,11 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
         texcam_target->begin_draw(m_command_list, m_texcam_shader, texcam_index);
         this->set_constant_buffer_view(texcam_target, _texcam_constant_buffer_object, object_scene_index);
 
-        if (m_raster)
-        {
-            const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
-            m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
-            m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
-            m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
-        }
+        const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
+        m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
+        m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
+        m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
+
         texcam_index++;
     }
     TransitionResource(m_command_list, pbr_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -1145,58 +1205,6 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
         this->post_processing(_post_processing_depth_of_field, texture_resources, enabled_cbuffers);
     }
     TransitionResource(m_command_list, texcam_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-    // Draw ImGUI
-    // Start the Dear ImGui frame
-    ImGui_ImplDX12_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-    ImGuizmo::SetOrthographic(false);
-    ImGuizmo::BeginFrame();
-    // Make the gbuffers available for ImGUI
-    for (dword i = 0; i < k_gbuffer_count; i++)
-    {
-        // TODO: is calling this several times a frame going to cause a memory leak?
-        CreateShaderResourceView(m_device, deferred_target->get_frame_resource(i, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
-        m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
-    }
-    //for (dword i = k_gbuffer_count; i < k_gbuffer_count + k_light_buffer_count; i++)
-    //{
-    //    // Ditto above
-    //    dword target_index = i - k_gbuffer_count;
-    //    CreateShaderResourceView(m_device, lighting_target->get_frame_resource(target_index, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
-    //    m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
-    //}
-    {
-        // SRV for depth buffer
-        D3D12_SHADER_RESOURCE_VIEW_DESC depth_srv = {};
-        depth_srv.Format = DXGI_FORMAT_R32_FLOAT;
-        depth_srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        depth_srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        depth_srv.Texture2D.MipLevels = 1;
-
-        dword index = k_gbuffer_count + k_light_buffer_count;
-        ID3D12Resource* texture_resource = m_render_targets[_render_target_deferred]->get_depth_resource(m_frame_index);
-        m_device->CreateShaderResourceView(texture_resource, &depth_srv, m_imgui_descriptor_heap->get_cpu_handle(index));
-        m_gbuffer_gpu_handles[index] = m_imgui_descriptor_heap->get_gpu_handle(index);
-    }
-    imgui_overlay(scene, this, fps_counter);
-    c_render_target* final_target = m_render_targets[k_render_target_final];
-    ID3D12DescriptorHeap* imgui_descriptor_heaps[] = { m_imgui_descriptor_heap->get_heap() };
-    m_command_list->SetDescriptorHeaps(_countof(imgui_descriptor_heaps), imgui_descriptor_heaps);
-    ImGui::Render();
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_command_list);
-
-    // prepare final frame to copy into swapchain
-    TransitionResource(m_command_list, final_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
-    ID3D12Resource* final_frame = final_target->get_frame_resource(0, m_frame_index);
-    // copy final frame to swapchain buffer and get ready to present
-    m_command_list->CopyResource(m_backbuffers[m_frame_index], final_frame);
-    TransitionResource(m_command_list, final_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-    TransitionResource(m_command_list, m_backbuffers[m_frame_index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
-
-    hr = m_command_list->Close();
-    if (!HRESULT_VALID(hr)) { return; }
 }
 
 void c_renderer_dx12::set_constant_buffer_view(const c_render_target* const target, const e_constant_buffers buffer_type, const dword buffer_index)

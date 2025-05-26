@@ -9,6 +9,18 @@
 #include <render/api/directx12/descriptor_heap.h>
 #include <render/api/directx12/shader_input.h>
 #include <render/model.h>
+#include <nv_helpers_dx12/TopLevelASGenerator.h>
+#include <vector>
+#include <dxcapi.h>
+#include "nv_helpers_dx12/ShaderBindingTableGenerator.h"
+
+// #DXR
+struct s_acceleration_structure_buffers
+{
+	ID3D12Resource* pScratch;      // Scratch memory for AS builder
+	ID3D12Resource* pResult;       // Where the AS is
+	ID3D12Resource* pInstanceDesc; // Hold the matrices of the instances
+};
 
 // TODO: root_parameters.h
 // TODO: post_processing.h
@@ -84,6 +96,8 @@ private:
 
 	// Update pipeline prior to render
 	void update_pipeline(c_scene* const scene, dword fps_counter);
+	void update_raytrace(c_scene* const scene);
+	void update_raster(c_scene* const scene);
 
 	// Perform post processing pass
 	void post_processing(const e_post_processing_passes pass, ID3D12Resource* const texture_resources[], const dword buffer_flags);
@@ -96,7 +110,7 @@ private:
 	ID3D12Debug* m_dx12_debug;
 #endif
 	IDXGIFactory7* m_factory; // Provides methods for generating DXGI objects
-	ID3D12Device* m_device; // Virtual adapter, representing a GPU
+	ID3D12Device5* m_device; // Virtual adapter, representing a GPU
 	IDXGIAdapter4* m_adapter; // Display subsystem, representing one or more GPUs
 	ID3D12CommandQueue* m_command_queue; // Provides methods for submitting command lists to the GPU
 	IDXGISwapChain3* m_swapchain; // Alternating display surfaces (back-buffer & front-buffer)
@@ -120,7 +134,7 @@ private:
 
 	c_shader_input* m_shader_inputs[k_shader_input_count]; // Defines what resources are bound to the graphics pipeline
 
-	ID3D12GraphicsCommandList* m_command_list; // Encapsulates a list of graphics commands for rendering & instruments command list execution
+	ID3D12GraphicsCommandList4* m_command_list; // Encapsulates a list of graphics commands for rendering & instruments command list execution
 	CD3DX12_VIEWPORT m_viewport; // Viewports for rasterisation
 	CD3DX12_RECT m_scissor_rect;
 
@@ -133,4 +147,65 @@ private:
 	HANDLE m_fence_event; // Frame synchronisation event handle
 	ID3D12Fence* m_fences[FRAME_BUFFER_COUNT]; // The GPU object we notify when to do work, and the object we wait for the work to be done
 	qword m_fence_values[FRAME_BUFFER_COUNT]; // Updating value which can signal when work is done
+
+
+	// RT
+	std::vector<s_acceleration_structure_buffers> m_bottom_level_as; // Storage for the bottom Level AS
+
+	nv_helpers_dx12::TopLevelASGenerator m_top_level_as_generator;
+	s_acceleration_structure_buffers m_top_level_as_buffers;
+	std::vector<std::pair<ID3D12Resource*, DirectX::XMMATRIX>> m_instances;
+
+	/// Create the acceleration structure of an instance
+	///
+	/// \param     vVertexBuffers : pair of buffer and vertex count
+	/// \return    AccelerationStructureBuffers for TLAS
+	s_acceleration_structure_buffers create_bottom_level_as(std::vector<std::pair<ID3D12Resource*, uint32_t>> v_vertex_buffers, std::vector<std::pair<ID3D12Resource*, uint32_t>> v_index_buffers);
+
+	/// Create the main acceleration structure that holds
+	/// all instances of the scene
+	/// \param     instances : pair of BLAS and transform
+	void create_top_level_as(const std::vector<std::pair<ID3D12Resource*, DirectX::XMMATRIX>> &instances, bool update_only = false);
+
+	ID3D12RootSignature* create_ray_gen_signature();
+	ID3D12RootSignature* create_hit_signature();
+	ID3D12RootSignature* create_miss_signature();
+
+	IDxcBlob* m_ray_gen_library;
+	IDxcBlob* m_hit_library;
+	IDxcBlob* m_miss_library;
+
+	ID3D12RootSignature* m_ray_gen_signature;
+	ID3D12RootSignature* m_hit_signature;
+	ID3D12RootSignature* m_miss_signature;
+
+	// Ray tracing pipeline state
+	ID3D12StateObject* m_rt_state_object;
+	// Ray tracing pipeline state properties, retaining the shader identifiers
+	// to use in the Shader Binding Table
+	ID3D12StateObjectProperties* m_rt_state_object_props;
+
+	//ID3D12Resource* m_output_resource;
+	ID3D12DescriptorHeap* m_srv_uav_heap;
+
+	nv_helpers_dx12::ShaderBindingTableGenerator m_sbt_helper;
+	ID3D12Resource* m_sbt_storage[FRAME_BUFFER_COUNT];
+
+public:
+	/// Create all acceleration structures, bottom and top
+	void create_acceleration_structures(c_scene* const scene, bool update_only = false);
+
+	// Create the raytracing pipeline, associating the shader code to symbol names
+	// and to their root signatures, and defining the amount of memory carried by rays (ray payload)
+	void create_raytracing_pipeline();
+
+	// Allocate the buffer storing the raytracing output, with the same dimensions as the target image
+	void create_raytracing_output_buffer();
+
+	// Create the buffer containing the raytracing result (always output in a UAV), and create
+	// the heap referencing the resources used by the raytracing, such as the acceleration structure
+	void create_shader_resource_heap(bool update_only = false);
+
+	// Create the shader binding table and indicating which shaders are invoked for each instance in the AS
+	void create_shader_binding_table(c_scene* const scene, bool update_only = false);
 };

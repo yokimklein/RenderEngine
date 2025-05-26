@@ -66,6 +66,15 @@ void c_scene_object::setup_for_render(c_camera* const camera, c_renderer* const 
 	transposed = XMMatrixTranspose(transposed);
 	XMStoreFloat4x4((XMFLOAT4X4*)&cbuffer.m_world, transposed);
 
+	// inverse matrices for raytracing
+	XMVECTOR det;
+	XMMATRIX projection = XMLoadFloat4x4((XMFLOAT4X4*)&cbuffer.m_projection);
+	XMMATRIX projection_inverse = XMMatrixInverse(&det, projection);
+	XMStoreFloat4x4((XMFLOAT4X4*)&cbuffer.m_projection_inverse, projection_inverse);
+	XMMATRIX view = XMLoadFloat4x4((XMFLOAT4X4*)&cbuffer.m_view);
+	XMMATRIX view_inverse = XMMatrixInverse(&det, view);
+	XMStoreFloat4x4((XMFLOAT4X4*)&cbuffer.m_view_inverse, view_inverse);
+
 	// copy our ConstantBuffer instance to the mapped constant buffer resource
 	renderer->set_object_constant_buffer(cbuffer, index);
 

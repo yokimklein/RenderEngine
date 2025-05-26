@@ -37,6 +37,8 @@ public:
 	inline const D3D12_SHADER_VISIBILITY get_visibility() const { return m_visibility; };
 	D3D12_GPU_VIRTUAL_ADDRESS get_gpu_address(const dword frame_index, const dword buffer_index);
 
+	const dword get_buffer_size() const { return m_buffer_aligned_size; };
+
 private:
 	const dword m_buffer_struct_size;
 	const dword m_buffer_aligned_size;

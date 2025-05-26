@@ -108,7 +108,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -117,17 +117,18 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);third_party/dcx/</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
+      <Command>echo call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Clear any existing old build artifacts</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
-call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
+      <Command>echo call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
+echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
       <Message>Compile engine assets (meshes, textures, shaders etc)</Message>
     </PostBuildEvent>
     <CopyFileToFolders>
@@ -142,7 +143,7 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -153,17 +154,18 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);third_party/dcx/</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
+      <Command>echo call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Clear any existing old build artifacts</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
-call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
+      <Command>echo call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
+echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
       <Message>Compile engine assets (meshes, textures, shaders etc)</Message>
     </PostBuildEvent>
     <CopyFileToFolders>
@@ -176,7 +178,7 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -186,17 +188,18 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);third_party/dcx/</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
+      <Command>echo call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Clear any existing old build artifacts</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
-call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
+      <Command>echo call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
+echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
       <Message>Compile engine assets (meshes, textures, shaders etc)</Message>
     </PostBuildEvent>
     <CopyFileToFolders>
@@ -211,7 +214,7 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -222,17 +225,18 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);third_party/dcx/</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
+      <Command>echo call "$(ProjectDir)tools\clear_build_artifacts.bat" "$(OutputPath)assets"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Clear any existing old build artifacts</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
-call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
+      <Command>echo call "$(ProjectDir)tools\compile_assets.bat" "$(ProjectDir)assets" "$(ProjectDir)assets_compiled" "$(ProjectDir)tools"
+echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled" "$(OutputPath)assets"</Command>
       <Message>Compile engine assets (meshes, textures, shaders etc)</Message>
     </PostBuildEvent>
     <CopyFileToFolders>
@@ -247,6 +251,12 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
     </CopyFileToFolders>
+    <ClCompile Include="source\render\api\directx12\renderer_rt.cpp" />
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\BottomLevelASGenerator.cpp" />
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\RaytracingPipelineGenerator.cpp" />
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\RootSignatureGenerator.cpp" />
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\ShaderBindingTableGenerator.cpp" />
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\TopLevelASGenerator.cpp" />
     <ClCompile Include="third_party\ImGuizmo\ImGuizmo.cpp">
       <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">false</IncludeInUnityFile>
       <IncludeInUnityFile Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">false</IncludeInUnityFile>
@@ -374,6 +384,13 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
     <ClInclude Include="source\scene\scene.h" />
     <ClInclude Include="source\time\time.h" />
     <ClInclude Include="source\types.h" />
+    <ClInclude Include="third_party\DXRHelpers\DXRHelper.h" />
+    <ClInclude Include="third_party\DXRHelpers\DXSampleHelper.h" />
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\BottomLevelASGenerator.h" />
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\RaytracingPipelineGenerator.h" />
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\RootSignatureGenerator.h" />
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\ShaderBindingTableGenerator.h" />
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\TopLevelASGenerator.h" />
     <ClInclude Include="third_party\imgui-1.91.6\backends\imgui_impl_dx12.h" />
     <ClInclude Include="third_party\imgui-1.91.6\backends\imgui_impl_win32.h" />
     <ClInclude Include="third_party\imgui-1.91.6\imconfig.h" />
@@ -435,6 +452,36 @@ call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_compiled
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="assets\shaders\raytrace\common.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\raytrace\hit.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\raytrace\miss.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="assets\shaders\raytrace\ray_gen.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

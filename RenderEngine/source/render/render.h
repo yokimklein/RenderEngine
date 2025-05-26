@@ -15,7 +15,9 @@
 struct s_object_cb
 {
 	matrix4x4 m_projection;
+	matrix4x4 m_projection_inverse;
 	matrix4x4 m_view;
+	matrix4x4 m_view_inverse;
 	matrix4x4 m_world;
 };
 

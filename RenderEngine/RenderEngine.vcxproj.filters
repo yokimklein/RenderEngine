@@ -102,6 +102,24 @@
     <ClCompile Include="third_party\ImGuizmo\ImGuizmo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\render\api\directx12\renderer_rt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\BottomLevelASGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\RaytracingPipelineGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\RootSignatureGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\ShaderBindingTableGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\DXRHelpers\nv_helpers_dx12\TopLevelASGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\types.h">
@@ -194,6 +212,27 @@
     <ClInclude Include="third_party\ImGuizmo\ImGuizmo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\BottomLevelASGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\RaytracingPipelineGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\RootSignatureGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\ShaderBindingTableGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\DXRHelpers\nv_helpers_dx12\TopLevelASGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\DXRHelpers\DXRHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\DXRHelpers\DXSampleHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="assets\shaders\constants.hlsl" />
@@ -220,5 +259,9 @@
     <CopyFileToFolders Include="assets\shaders\lighting.hlsl" />
     <CopyFileToFolders Include="assets\shaders\pbr.hlsl" />
     <CopyFileToFolders Include="assets\shaders\old_lighting.hlsl" />
+    <CopyFileToFolders Include="assets\shaders\raytrace\ray_gen.hlsl" />
+    <CopyFileToFolders Include="assets\shaders\raytrace\Common.hlsl" />
+    <CopyFileToFolders Include="assets\shaders\raytrace\Hit.hlsl" />
+    <CopyFileToFolders Include="assets\shaders\raytrace\Miss.hlsl" />
   </ItemGroup>
 </Project>

@@ -33,21 +33,25 @@ void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword
         char debug_overlay_text[32];
         sprintf_s(debug_overlay_text, "DEBUG OVERLAY (%d/%dFPS)\n", fps_counter, TICK_RATE);
         ImGui::SeparatorText(debug_overlay_text);
+
+        // m_raster
+        ImGui::Checkbox("Raster", (bool*)&renderer->m_raster); // TODO: make renderer not a const, const casting is horrid
+
         if (ImGui::BeginTabBar("Debug Overlay Tab Bar"))
         {
-            if (ImGui::BeginTabItem("G-Buffers"))
+            if (renderer->m_raster)
             {
-                // m_raster
-                ImGui::Checkbox("Raster", (bool*)&renderer->m_raster); // TODO: make renderer not a const, const casting is horrid
-
-                for (dword i = 0; i < k_gbuffer_count + k_light_buffer_count + 1; i++) // + depth
+                if (ImGui::BeginTabItem("G-Buffers"))
                 {
-                    ImGui::SeparatorText(get_gbuffer_name((e_gbuffers)i));
-                    const float aspect_ratio = static_cast<float>(RENDER_GLOBALS.render_bounds.height) / static_cast<float>(RENDER_GLOBALS.render_bounds.width);
-                    ImVec2 imvec = ImVec2(256.0f, 256.0f * aspect_ratio);
-                    ImGui::Image((ImTextureID)renderer->get_gbuffer_textureid((e_gbuffers)i), imvec); // width * aspect ratio corrected height
+                    for (dword i = 0; i < k_gbuffer_count + k_light_buffer_count + 1; i++) // + depth
+                    {
+                        ImGui::SeparatorText(get_gbuffer_name((e_gbuffers)i));
+                        const float aspect_ratio = static_cast<float>(RENDER_GLOBALS.render_bounds.height) / static_cast<float>(RENDER_GLOBALS.render_bounds.width);
+                        ImVec2 imvec = ImVec2(256.0f, 256.0f * aspect_ratio);
+                        ImGui::Image((ImTextureID)renderer->get_gbuffer_textureid((e_gbuffers)i), imvec); // width * aspect ratio corrected height
+                    }
+                    ImGui::EndTabItem();
                 }
-                ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Scene Objects"))
             {

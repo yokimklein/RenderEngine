@@ -21,9 +21,12 @@ struct vs_output
 
 cbuffer object_cb : register(b0)
 {
-	float4x4 projection;
-	float4x4 view;
-	float4x4 world;
+    float4x4 projection;
+    float4x4 projection_inverse;
+    float4x4 view;
+    float4x4 view_inverse;
+    float4x4 world;
+    float4 camera_position;
 };
 
 vs_output vs_main(vs_input input)
