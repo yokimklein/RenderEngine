@@ -60,6 +60,18 @@ const wchar_t* const get_constant_buffer_name(const e_render_pass render_pass, c
             static_assert(_countof(k_post_buffer_names) == k_post_constant_buffer_count);
             return k_post_buffer_names[buffer_type];
         }
+
+        case _render_pass_raytrace:
+        {
+            if (!IN_RANGE_COUNT(buffer_type, 0, 1)) break;
+
+            constexpr const wchar_t* k_rt_buffer_names[] =
+            {
+                L"RT Constant Buffer"
+            };
+            static_assert(_countof(k_rt_buffer_names) == 1);
+            return k_rt_buffer_names[buffer_type];
+        }
     }
 
     LOG_WARNING(L"tried to get name for invalid buffer type [%d] for render pass [%d]!", buffer_type, render_pass);

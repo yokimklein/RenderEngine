@@ -54,7 +54,7 @@ void main_win(qword hwnd)
     g_scene = new c_scene();
 
 	// Init D3D & return on fail
-	if (!g_renderer->initialise((HWND)hwnd))
+	if (!g_renderer->initialise((HWND)hwnd, g_scene))
 	{
 		LOG_ERROR(L"renderer init failed! aborting");
 		delete g_renderer;
@@ -63,10 +63,8 @@ void main_win(qword hwnd)
 
 	main_init();
 
-    g_renderer->create_acceleration_structures(g_scene, false);
-    g_renderer->create_raytracing_pipeline();
-    g_renderer->create_raytracing_output_buffer();
-    g_renderer->create_shader_resource_heap(false);
+    // $TODO: need to be able to access scene object assets after initialisation to create AS, but they need the renderer initialised to upload assets to the GPU first
+    g_renderer->create_acceleration_structures(g_scene);
     g_renderer->create_shader_binding_table(g_scene, false);
 
 	MSG msg = {};
@@ -148,12 +146,12 @@ void main_init()
             cube_object->m_transform.set_rotation(cube_object->m_transform.get_rotation() * quat);
         }
     );
-    g_scene->add_object(cube_object);
+    //g_scene->add_object(cube_object);
 
     constexpr const char* sponza_mesh_material_names[] =
     {
         //"arch_stone_wall_01",
-        //"brickwall_01",
+        "brickwall_01",
         //"brickwall_02",
         //"ceiling_plaster_01",
         //"ceiling_plaster_02",
@@ -165,7 +163,7 @@ void main_init()
         //"dirt_decal",
         //"door_stoneframe_01",
         //"door_stoneframe_02",
-        "floor_01",
+        //"floor_01",
         //"glass",
         //"lamp_glass_01",
         //"light_bulb",
@@ -179,13 +177,18 @@ void main_init()
         //"stone_trims_02",
         //"window_frame_01",
         //"wood_01",
-        //"wood_door_01"
+        //"wood_door_01",
+
+        //"curtain_01_metal_door",
+        //"curtain_01",
+        //"curtain_02",
+        //"curtain_03",
     };
     constexpr dword sponza_mesh_material_count = _countof(sponza_mesh_material_names);
     constexpr const char* sponza_material_texture_names[][4] =
     {
         //{ "arch_stone_wall_01_BaseColor",   "arch_stone_wall_01_Normal",    "arch_stone_wall_01_Roughness",     "arch_stone_wall_01_Metalness"	 	},
-        //{ "brickwall_01_BaseColor",         "brickwall_01_Normal",          "brickwall_01_Roughness",     		"brickwall_01_Metalness" 	 	    },
+        { "brickwall_01_BaseColor",         "brickwall_01_Normal",          "brickwall_01_Roughness",     		"brickwall_01_Metalness" 	 	    },
         //{ "brickwall_02_BaseColor",         "brickwall_02_Normal",          "brickwall_02_Roughness",     		"brickwall_02_Metalness" 			},
         //{ "ceiling_plaster_01_BaseColor",   "ceiling_plaster_01_Normal",    "ceiling_plaster_01_Roughness",     "ceiling_plaster_01_Metalness" 		},
         //{ "ceiling_plaster_02_BaseColor",   "ceiling_plaster_02_Normal",    "ceiling_plaster_02_Roughness",     "ceiling_plaster_02_Metalness" 		},
@@ -197,7 +200,7 @@ void main_init()
         //{ "dirt_decal_01_alpha", "", "", "" },
         //{ "door_stoneframe_01_BaseColor",   "door_stoneframe_01_Normal",    "door_stoneframe_01_Roughness",     "door_stoneframe_01_Metalness" 		},
         //{ "door_stoneframe_02_BaseColor",   "door_stoneframe_02_Normal",    "door_stoneframe_02_Roughness",     "door_stoneframe_02_Metalness" 		},
-        { "floor_tiles_01_BaseColor",       "floor_tiles_01_Normal",        "floor_tiles_01_Roughness",     	"floor_tiles_01_Metalness" 			},
+        //{ "floor_tiles_01_BaseColor",       "floor_tiles_01_Normal",        "floor_tiles_01_Roughness",     	"floor_tiles_01_Metalness" 			},
         //{ "", "", "", "" }, // glass
         //{ "", "", "", "" }, // lamp glass
         //{ "", "", "", "" }, // light bulb
@@ -212,6 +215,11 @@ void main_init()
         //{ "window_frame_01_BaseColor",      "window_frame_01_Normal",       "window_frame_01_Roughness",     	"window_frame_01_Metalness" 		},
         //{ "wood_tile_01_BaseColor",         "wood_tile_01_Normal",          "wood_tile_01_Roughness",     		"wood_tile_01_Metalness" 			},
         //{ "wood_door_01_BaseColor",         "wood_door_01_Normal",          "wood_door_01_Roughness",     		"wood_door_01_Metalness" 			},
+
+        //{ "metal_door_01_BaseColor",        "metal_door_01_Normal",         "metal_door_01_Roughness",     		"metal_door_01_Metalness" 			},
+        //{ "curtain_fabric_red_BaseColor",   "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
+        //{ "curtain_fabric_green_BaseColor", "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
+        //{ "curtain_fabric_blue_BaseColor",  "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
     };
 
     c_mesh* sponza_meshes[sponza_mesh_material_count];

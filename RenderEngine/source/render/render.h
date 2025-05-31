@@ -124,7 +124,7 @@ class c_renderer
 public:
 	c_renderer();
 
-	virtual bool initialise(const HWND hWnd) = 0;
+	virtual bool initialise(const HWND hWnd, c_scene* const scene) = 0;
 	virtual void render_frame(c_scene* const scene, dword fps_counter) = 0;
 	virtual void set_object_constant_buffer(const s_object_cb& cbuffer, const dword object_index) = 0;
 	virtual void set_material_constant_buffer(const s_material_properties_cb& cbuffer, const dword object_index) = 0;

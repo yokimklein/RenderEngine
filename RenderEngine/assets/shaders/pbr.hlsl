@@ -145,6 +145,7 @@ float4 ps_deferred_pbr(vs_screen_quad_output input) : SV_Target0
 	
 	// Lighting done in world space
     float4 lighting = compute_lighting_pbr(world_position, normal.rgb, albedo, roughness, metallic);
+    lighting.a = 1.0f;
     
     return lighting;
 }

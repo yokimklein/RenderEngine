@@ -18,7 +18,10 @@ enum e_constant_buffers
 
 	// post processing render pass
 	_post_constant_buffer = 0,
-	k_post_constant_buffer_count
+	k_post_constant_buffer_count,
+
+	_raytrace_constant_buffer = 0,
+	k_raytrace_cosntant_buffer_count
 };
 static const wchar_t* const get_constant_buffer_name(const e_render_pass render_pass, const e_constant_buffers buffer_type);
 

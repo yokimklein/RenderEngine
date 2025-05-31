@@ -203,6 +203,12 @@ bool c_renderer_dx12::initialise_command_list()
     HRESULT hr = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_command_allocators[m_frame_index], NULL, IID_PPV_ARGS(&m_command_list));
     if (!HRESULT_VALID(hr)) { return K_FAILURE; }
 
+    //hr = m_command_list->Close();
+    //if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    //
+    //hr = m_command_list->Reset(m_command_allocators[m_frame_index], NULL);
+    //if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+
     return K_SUCCESS;
 }
 
@@ -755,7 +761,9 @@ bool c_renderer_dx12::upload_assets()
 {
     HRESULT hr = S_OK;
     // Now we execute the command list to upload the initial assets (triangle data)
-    m_command_list->Close();
+    hr = m_command_list->Close();
+    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+
     ID3D12CommandList* pp_command_lists[] = { m_command_list };
     m_command_queue->ExecuteCommandLists(_countof(pp_command_lists), pp_command_lists);
 
@@ -869,7 +877,7 @@ c_renderer_dx12::~c_renderer_dx12()
 }
 
 // TODO: decouple arg from windows
-bool c_renderer_dx12::initialise(const HWND hWnd)
+bool c_renderer_dx12::initialise(const HWND hWnd, c_scene* const scene)
 {
     if (m_initialised)
     {
@@ -911,6 +919,11 @@ bool c_renderer_dx12::initialise(const HWND hWnd)
 
     // Default geometry
     if (!this->initialise_default_geometry()) { return K_FAILURE; }
+
+    // Raytacing pipeline
+    if (!this->initialise_raytracing_pipeline()) { return K_FAILURE; }
+    //this->create_acceleration_structures(scene);
+    //if (!this->create_shader_binding_table(scene, false)) { return K_FAILURE; }
 
     // Execute the command list to upload the initial assets
     if (!this->upload_assets()) { return K_FAILURE; }
@@ -1011,7 +1024,7 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     else
     {
         // Start raster render for ImGUI
-        m_render_targets[_render_target_raytrace]->begin_render(m_command_list, m_frame_index, false);
+        //m_render_targets[_render_target_raytrace]->begin_render(m_command_list, m_frame_index, false);
     }
 
     imgui_overlay(scene, this, fps_counter);

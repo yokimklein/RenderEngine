@@ -1,24 +1,41 @@
 #include "renderer.h"
 #include "DXRHelper.h"
-#include <nv_helpers_dx12/BottomLevelASGenerator.h>
 #include <render/api/directx12/helpers.h>
 #include <scene/scene.h>
 #include <nv_helpers_dx12/RaytracingPipelineGenerator.h>
 #include <nv_helpers_dx12/RootSignatureGenerator.h>
+#include <render\texture.h>
+#include <reporting\report.h>
+#include <DirectXHelpers.h>
+#include <BufferHelpers.h>
+
+bool c_renderer_dx12::initialise_raytracing_pipeline()
+{
+    if (!this->create_raytracing_pipeline()) { return K_FAILURE; }
+
+    // Create a SRV/UAV/CBV descriptor heap. We need 2 entries - 1 UAV for the raytracing output and 1 SRV for the TLAS
+    // FRAME0: Output UAV, Top level AS, Camera CB
+    // FRAME1: Output UAV, Top level AS, Camera CB
+    // FRAME2: Output UAV, Top level AS, Camera CB
+    // Textures
+    // $TODO: clean this up on destruction
+    m_srv_uav_heap = new DescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, FRAME_BUFFER_COUNT * 3 + 4);
+
+    return K_SUCCESS;
+}
 
 void c_renderer_dx12::update_raytrace(c_scene* const scene)
 {
     c_render_target* raytrace_target = m_render_targets[_render_target_raytrace];
     //raytrace_target->begin_render(m_command_list, m_frame_index);
 
-    this->create_acceleration_structures(scene, true);
-    this->create_shader_resource_heap(true);
+    this->update_shader_resource_heap(scene);
     this->create_shader_binding_table(scene, true);
 
     // Bind the descriptor heap giving access to the top-level acceleration structure, as well as the raytracing output
     //const dword increment_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     //CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(m_srv_uav_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index * 3, increment_size);
-    std::vector<ID3D12DescriptorHeap*> heaps = { m_srv_uav_heap };
+    std::vector<ID3D12DescriptorHeap*> heaps = { m_srv_uav_heap->Heap()};
     m_command_list->SetDescriptorHeaps(static_cast<dword>(heaps.size()), heaps.data());
     
     // On the last frame, the raytracing output was used as a copy source, to copy its contents into the render target.
@@ -70,165 +87,167 @@ void c_renderer_dx12::update_raytrace(c_scene* const scene)
     m_command_list->ResourceBarrier(1, &transition);
 }
 
-s_acceleration_structure_buffers c_renderer_dx12::create_bottom_level_as(std::vector<std::pair<ID3D12Resource*, uint32_t>> v_vertex_buffers, std::vector<std::pair<ID3D12Resource*, uint32_t>> v_index_buffers)
-{
-    nv_helpers_dx12::BottomLevelASGenerator bottomLevelAS;
-
-    // Adding all vertex buffers and not transforming their position.
-    // for (const auto &buffer : v_vertex_buffers) {
-    for (size_t i = 0; i < v_vertex_buffers.size(); i++)
-    {
-        if (i < v_index_buffers.size() && v_index_buffers[i].second > 0)
-        {
-            bottomLevelAS.AddVertexBuffer(v_vertex_buffers[i].first, 0, v_vertex_buffers[i].second, sizeof(vertex), v_index_buffers[i].first, 0, v_index_buffers[i].second, nullptr, 0, true);
-        }
-        else
-        {
-            bottomLevelAS.AddVertexBuffer(v_vertex_buffers[i].first, 0, v_vertex_buffers[i].second, sizeof(vertex), 0, 0);
-        }
-    }
-
-    // The AS build requires some scratch space to store temporary information.
-    // The amount of scratch memory is dependent on the scene complexity.
-    UINT64 scratchSizeInBytes = 0;
-    // The final AS also needs to be stored in addition to the existing vertex
-    // buffers. It size is also dependent on the scene complexity.
-    UINT64 resultSizeInBytes = 0;
-
-    bottomLevelAS.ComputeASBufferSizes(m_device, false, &scratchSizeInBytes, &resultSizeInBytes);
-
-    // Once the sizes are obtained, the application is responsible for allocating
-    // the necessary buffers. Since the entire generation will be done on the GPU,
-    // we can directly allocate those on the default heap
-    s_acceleration_structure_buffers buffers;
-    buffers.pScratch = nv_helpers_dx12::CreateBuffer(
-        m_device, scratchSizeInBytes,
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
-        nv_helpers_dx12::kDefaultHeapProps);
-    buffers.pResult = nv_helpers_dx12::CreateBuffer(
-        m_device, resultSizeInBytes,
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-        nv_helpers_dx12::kDefaultHeapProps);
-
-    // Build the acceleration structure. Note that this call integrates a barrier
-    // on the generated AS, so that it can be used to compute a top-level AS right
-    // after this method.
-    bottomLevelAS.Generate(m_command_list, buffers.pScratch, buffers.pResult, false, nullptr);
-
-    return buffers;
-}
-
-//-----------------------------------------------------------------------------
-// Create the main acceleration structure that holds all instances of the scene.
-// Similarly to the bottom-level AS generation, it is done in 3 steps: gathering
-// the instances, computing the memory requirements for the AS, and building the
-// AS itself
-//
-void c_renderer_dx12::create_top_level_as(const std::vector<std::pair<ID3D12Resource*, DirectX::XMMATRIX>>& instances, bool update_only) // pair of bottom level AS and matrix of the instance
-{
-    if (!update_only)
-    {
-        // Gather all the instances into the builder helper
-        for (size_t i = 0; i < instances.size(); i++)
-        {
-            m_top_level_as_generator.AddInstance(instances[i].first, instances[i].second, static_cast<dword>(i), static_cast<dword>(0));
-        }
-
-        // As for the bottom-level AS, the building the AS requires some scratch space
-        // to store temporary data in addition to the actual AS. In the case of the
-        // top-level AS, the instance descriptors also need to be stored in GPU
-        // memory. This call outputs the memory requirements for each (scratch,
-        // results, instance descriptors) so that the application can allocate the
-        // corresponding memory
-        UINT64 scratchSize, resultSize, instanceDescsSize;
-
-        m_top_level_as_generator.ComputeASBufferSizes(m_device, true, &scratchSize, &resultSize, &instanceDescsSize);
-
-        // Create the scratch and result buffers. Since the build is all done on GPU,
-        // those can be allocated on the default heap
-        m_top_level_as_buffers.pScratch = nv_helpers_dx12::CreateBuffer(
-            m_device, scratchSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            nv_helpers_dx12::kDefaultHeapProps);
-        m_top_level_as_buffers.pResult = nv_helpers_dx12::CreateBuffer(
-            m_device, resultSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-            D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-            nv_helpers_dx12::kDefaultHeapProps);
-
-        // The buffer describing the instances: ID, shader binding information,
-        // matrices ... Those will be copied into the buffer by the helper through
-        // mapping, so the buffer has to be allocated on the upload heap.
-        m_top_level_as_buffers.pInstanceDesc = nv_helpers_dx12::CreateBuffer(
-            m_device, instanceDescsSize, D3D12_RESOURCE_FLAG_NONE,
-            D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
-    }
-
-    // After all the buffers are allocated, or if only an update is required, we
-    // can build the acceleration structure. Note that in the case of the update
-    // we also pass the existing AS as the 'previous' AS, so that it can be
-    // refitted in place.
-    m_top_level_as_generator.Generate(m_command_list, m_top_level_as_buffers.pScratch, m_top_level_as_buffers.pResult, m_top_level_as_buffers.pInstanceDesc, update_only, m_top_level_as_buffers.pResult);
-}
-
 //-----------------------------------------------------------------------------
 //
 // Combine the BLAS and TLAS builds to construct the entire acceleration
 // structure required to raytrace the scene
 //
-void c_renderer_dx12::create_acceleration_structures(c_scene* const scene, bool update_only)
+bool c_renderer_dx12::create_acceleration_structures(c_scene* const scene)
 {
-    if (!update_only)
-    {
-        HRESULT hr = m_command_list->Reset(m_command_allocators[m_frame_index], NULL);
-        if (!HRESULT_VALID(hr)) { return; }
-    }
+    // TODO: crashing on update with too much geometry
+    // TODO: handle updates
+    // TODO: design around calling reset & upload
+
+    // TODO: don't do this here
+    HRESULT hr = m_command_list->Reset(m_command_allocators[m_frame_index], NULL);
+    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
 
     // Build the bottom AS from the Triangle vertex buffer
     std::vector<c_scene_object*> objects = *scene->get_objects();
     for (dword object_index = 0; object_index < objects.size(); object_index++)
     {
         c_scene_object* object = objects[object_index];
-        if (update_only)
-        {
-            matrix4x4 object_matrix = object->m_transform.build_matrix();
-            m_instances[object_index].second = XMLoadFloat4x4((XMFLOAT4X4*)&object_matrix);
-        }
-        else
-        {
-            s_acceleration_structure_buffers bottomLevelBuffers = create_bottom_level_as
-            (
-                { { object->get_model()->get_resources()->vertex_buffer, object->get_model()->get_resources()->vertex_count } },
-                { { object->get_model()->get_resources()->index_buffer, object->get_model()->get_resources()->index_count } }
-            );
+        const s_geometry_resources* geometry = object->get_model()->get_resources();
 
-            matrix4x4 object_matrix = object->m_transform.build_matrix();
-            m_instances.push_back({ bottomLevelBuffers.pResult, XMLoadFloat4x4((XMFLOAT4X4*)&object_matrix) });
+        D3D12_RAYTRACING_GEOMETRY_DESC geometry_desc = {};
+        geometry_desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+        geometry_desc.Triangles.VertexBuffer.StartAddress = geometry->vertex_buffer->GetGPUVirtualAddress(); // If this doesn't work, get the address from the vertex buffer view
+        geometry_desc.Triangles.VertexBuffer.StrideInBytes = sizeof(vertex);
+        geometry_desc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+        geometry_desc.Triangles.VertexCount = geometry->vertex_count;
+        geometry_desc.Triangles.IndexBuffer = geometry->index_buffer->GetGPUVirtualAddress();
+        geometry_desc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
+        geometry_desc.Triangles.IndexCount = geometry->index_count;
+        geometry_desc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
-            // Store the AS buffers. The rest of the buffers will be released once we exit the function
-            m_bottom_level_as.push_back(bottomLevelBuffers);
-        }
+        // Get the size requirements for the scratch and AS buffers
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
+        inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+        inputs.NumDescs = 1;
+        inputs.pGeometryDescs = &geometry_desc;
+        inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+
+        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info = {};
+        m_device->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+
+        // Create the buffers. They need to support UAV, and since we are going to immediately use them, we create them with an unordered-access state
+        s_acceleration_structure_buffers bottom_level_buffer = {};
+        hr = CreateUAVBuffer(m_device, info.ScratchDataSizeInBytes, &bottom_level_buffer.pScratch, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+        hr = CreateUAVBuffer(m_device, info.ResultDataMaxSizeInBytes, &bottom_level_buffer.pResult, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+        if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+
+        // Create the bottom-level AS
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC as_desc = {};
+        as_desc.Inputs = inputs;
+        as_desc.DestAccelerationStructureData = bottom_level_buffer.pResult->GetGPUVirtualAddress();
+        as_desc.ScratchAccelerationStructureData = bottom_level_buffer.pScratch->GetGPUVirtualAddress();
+        m_command_list->BuildRaytracingAccelerationStructure(&as_desc, 0, nullptr);
+
+        // We need to insert a UAV barrier before using the acceleration structures in a raytracing operation
+        CD3DX12_RESOURCE_BARRIER blas_uav_barrier = CD3DX12_RESOURCE_BARRIER::UAV(bottom_level_buffer.pResult);
+        m_command_list->ResourceBarrier(1, &blas_uav_barrier);
+
+        m_bottom_level_as.push_back(bottom_level_buffer);
     }
 
-    create_top_level_as(m_instances, update_only);
+    // Create top level acceleration structure
+    // First, get the size of the TLAS buffers and create them
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
+    inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+    inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+    inputs.NumDescs = objects.size();
+    inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
 
-    if (!update_only)
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
+    m_device->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+
+    // Create the buffers
+    hr = CreateUAVBuffer(m_device, info.ScratchDataSizeInBytes, &m_top_level_as_buffers.pScratch, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    hr = CreateUAVBuffer(m_device, info.ResultDataMaxSizeInBytes, &m_top_level_as_buffers.pResult, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    //qword tlas_size = info.ResultDataMaxSizeInBytes;
+    
+    // Initialize the instance desc. We only have a single instance
+    // The instance desc should be inside a buffer, create and map the buffer
+    D3D12_RESOURCE_DESC bufDesc = {};
+    bufDesc.Alignment = 0;
+    bufDesc.DepthOrArraySize = 1;
+    bufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    bufDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    bufDesc.Format = DXGI_FORMAT_UNKNOWN;
+    bufDesc.Height = 1;
+    bufDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    bufDesc.MipLevels = 1;
+    bufDesc.SampleDesc.Count = 1;
+    bufDesc.SampleDesc.Quality = 0;
+    bufDesc.Width = sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * objects.size();
+
+    CD3DX12_HEAP_PROPERTIES upload_heap_properties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+    hr = m_device->CreateCommittedResource(&upload_heap_properties, D3D12_HEAP_FLAG_NONE, &bufDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_top_level_as_buffers.pInstanceDesc));
+    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+
+    D3D12_RAYTRACING_INSTANCE_DESC* raytracing_instance_descs;
+    m_top_level_as_buffers.pInstanceDesc->Map(0, nullptr, (void**)&raytracing_instance_descs);
+    ZeroMemory(raytracing_instance_descs, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * objects.size());
+
+    //D3D12_RAYTRACING_INSTANCE_DESC* raytracing_instance_descs = new D3D12_RAYTRACING_INSTANCE_DESC[objects.size()];
+    //memset(raytracing_instance_descs, 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * objects.size());
+    
+    //raytracing_instance_desc.InstanceID = 0;                            // This value will be exposed to the shader via InstanceID()
+    //raytracing_instance_desc.InstanceContributionToHitGroupIndex = 0;   // This is the offset inside the shader-table. We only have a single geometry, so the offset 0
+    //raytracing_instance_desc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+
+    for (dword object_index = 0; object_index < objects.size(); object_index++)
     {
-        // Flush the command list and wait for it to finish
-        m_command_list->Close();
-        ID3D12CommandList* ppCommandLists[] = { m_command_list };
-        m_command_queue->ExecuteCommandLists(1, ppCommandLists);
-        m_fence_values[m_frame_index]++;
-        m_command_queue->Signal(m_fences[m_frame_index], m_fence_values[m_frame_index]);
+        c_scene_object* object = objects[object_index];
 
-        m_fences[m_frame_index]->SetEventOnCompletion(m_fence_values[m_frame_index], m_fence_event);
-        WaitForSingleObject(m_fence_event, INFINITE);
-
-        // Once the command list is finished executing, reset it to be reused for
-        // rendering
-        //hr = m_command_list->Reset(m_command_allocators[m_frame_index], NULL);
-        //if (!HRESULT_VALID(hr)) { return; }
+        raytracing_instance_descs[object_index].InstanceID = object_index;
+        raytracing_instance_descs[object_index].InstanceContributionToHitGroupIndex = 0;
+        raytracing_instance_descs[object_index].Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+        matrix4x4 object_matrix = objects[object_index]->m_transform.build_matrix();
+        XMMATRIX xm_matrix = XMLoadFloat4x4((XMFLOAT4X4*)&object_matrix);
+        xm_matrix = XMMatrixTranspose(xm_matrix);
+        memcpy(raytracing_instance_descs[object_index].Transform, &xm_matrix, sizeof(raytracing_instance_descs[object_index].Transform));
+        raytracing_instance_descs[object_index].AccelerationStructure = m_bottom_level_as[object_index].pResult->GetGPUVirtualAddress();
+        raytracing_instance_descs[object_index].InstanceMask = 0xFF;
     }
+
+    // The instance desc should be inside a buffer, create and map the buffer
+    //hr = CreateUploadBuffer(m_device, &raytracing_instance_descs, objects.size(), sizeof(D3D12_RAYTRACING_INSTANCE_DESC), &m_top_level_as_buffers.pInstanceDesc);
+    //if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    // Unmap
+    m_top_level_as_buffers.pInstanceDesc->Unmap(0, nullptr);
+
+    // Create the TLAS
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC as_desc = {};
+    as_desc.Inputs = inputs;
+    as_desc.Inputs.InstanceDescs = m_top_level_as_buffers.pInstanceDesc->GetGPUVirtualAddress();
+    as_desc.DestAccelerationStructureData = m_top_level_as_buffers.pResult->GetGPUVirtualAddress();
+    as_desc.ScratchAccelerationStructureData = m_top_level_as_buffers.pScratch->GetGPUVirtualAddress();
+
+    m_command_list->BuildRaytracingAccelerationStructure(&as_desc, 0, nullptr);
+
+    // We need to insert a UAV barrier before using the acceleration structures in a raytracing operation
+    CD3DX12_RESOURCE_BARRIER tlas_uav_barrier = CD3DX12_RESOURCE_BARRIER::UAV(m_top_level_as_buffers.pResult);
+    m_command_list->ResourceBarrier(1, &tlas_uav_barrier);
+
+    // TODO: don't do this here
+    // Flush the command list and wait for it to finish
+    m_command_list->Close();
+    ID3D12CommandList* ppCommandLists[] = { m_command_list };
+    m_command_queue->ExecuteCommandLists(1, ppCommandLists);
+    m_fence_values[m_frame_index]++;
+    m_command_queue->Signal(m_fences[m_frame_index], m_fence_values[m_frame_index]);
+
+    m_fences[m_frame_index]->SetEventOnCompletion(m_fence_values[m_frame_index], m_fence_event);
+    WaitForSingleObject(m_fence_event, INFINITE);
+
+    //delete[] raytracing_instance_descs;
+
+    return K_SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -242,7 +261,7 @@ ID3D12RootSignature* c_renderer_dx12::create_ray_gen_signature()
     ({
         { 0 /*u0*/, 1 /*1 descriptor */, 0 /*use the implicit register space 0*/, D3D12_DESCRIPTOR_RANGE_TYPE_UAV /* UAV representing the output buffer*/, 0 /*heap slot where the UAV is defined*/ },
         { 0 /*t0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Top-level acceleration structure*/, 1 },
-        { 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /* Object buffer */, 2}
+        { 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /* Object/Camera buffer */, 2}
     });
 
     return rsc.Generate(m_device, true);
@@ -254,10 +273,88 @@ ID3D12RootSignature* c_renderer_dx12::create_ray_gen_signature()
 //
 ID3D12RootSignature* c_renderer_dx12::create_hit_signature()
 {
-    nv_helpers_dx12::RootSignatureGenerator rsc;
-    rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices
-    rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
-    return rsc.Generate(m_device, true);
+    ID3D12RootSignature* root_signature;
+
+    D3D12_ROOT_PARAMETER root_parameters[3] = {};
+
+    // Vertices
+    root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+    root_parameters[0].Descriptor.RegisterSpace = 0;
+    root_parameters[0].Descriptor.ShaderRegister = 0; // t0
+    root_parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    // Indices
+    root_parameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+    root_parameters[1].Descriptor.RegisterSpace = 0;
+    root_parameters[1].Descriptor.ShaderRegister = 1; // t1
+    root_parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    // Textures
+    D3D12_ROOT_DESCRIPTOR_TABLE descriptor_table;
+    CD3DX12_DESCRIPTOR_RANGE texture_ranges[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_default_textures_count, 2 } }; // t2
+    descriptor_table.NumDescriptorRanges = _countof(texture_ranges); // we only have one range
+    descriptor_table.pDescriptorRanges = texture_ranges; // the pointer to the beginning of our ranges array
+    root_parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    root_parameters[2].DescriptorTable = descriptor_table;
+    root_parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+    // create a static sampler
+    CD3DX12_STATIC_SAMPLER_DESC samplers[1] =
+    {
+        (
+            0, // register
+            D3D12_FILTER_ANISOTROPIC,
+            D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            0.0f, // mip LOD bias
+            0, // max anisotropy
+            D3D12_COMPARISON_FUNC_NEVER,
+            D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
+            0.0f, // min LOD
+            D3D12_FLOAT32_MAX, // max LOD
+            D3D12_SHADER_VISIBILITY_PIXEL,
+            0 // register space
+        )
+    };
+
+    CD3DX12_ROOT_SIGNATURE_DESC root_signature_desc;
+    root_signature_desc.Init
+    (
+        _countof(root_parameters),
+        root_parameters, // a pointer to the beginning of our root parameters array
+        _countof(samplers),
+        samplers, // a pointer to our static samplers (array)
+        D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE
+    );
+
+    ID3DBlob* signature;
+    ID3DBlob* error; // a buffer holding the error data if any
+    HRESULT hr = D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+    if (hr == S_OK)
+    {
+        hr = m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&root_signature));
+        if (!HRESULT_VALID(hr))
+        {
+            LOG_ERROR(L"failed to create root signature!");
+        }
+        else
+        {
+            return root_signature;
+        }
+    }
+    return nullptr;
+
+    //nv_helpers_dx12::RootSignatureGenerator rsc;
+    //// TODO: these have a maximum of 65k, which may be causing issues?
+    //rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices
+    //rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
+    //rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 2 /*t2*/); // textures
+    //
+    //rsc.AddHeapRangesParameter
+    //({
+    //    //{ 2 /*t2*/, 4, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0 },      // Albedo texture
+    //    { 0 /*s0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1 }   // Sampler
+    //});
+    //return rsc.Generate(m_device, true);
 }
 
 //-----------------------------------------------------------------------------
@@ -277,8 +374,28 @@ ID3D12RootSignature* c_renderer_dx12::create_miss_signature()
 // manage temporary memory during raytracing
 //
 //
-void c_renderer_dx12::create_raytracing_pipeline()
+bool c_renderer_dx12::create_raytracing_pipeline()
 {
+    // Need 10 subobjects:
+    //  1 for the DXIL library
+    //  1 for hit-group
+    //  2 for RayGen root-signature (root-signature and the subobject association)
+    //  2 for miss shader root-signature (signature and association)
+    //  2 for hit shader root-signature (signature and association)
+    //  2 for shader config (shared between all programs. 1 for the config, 1 for association)
+    //  1 for pipeline config
+    //  1 for the global root signature
+    //D3D12_STATE_SUBOBJECT subobjects[12];
+    //uint32_t index = 0;
+
+    // Create the DXIL library
+    //DxilLibrary dxilLib = createDxilLibrary();
+    //subobjects[index++] = dxilLib.stateSubobject; // 0 Library
+
+
+
+
+
     nv_helpers_dx12::RayTracingPipelineGenerator pipeline(m_device);
 
     // The pipeline contains the DXIL code of all the shaders potentially executed
@@ -359,35 +476,9 @@ void c_renderer_dx12::create_raytracing_pipeline()
     // Cast the state object into a properties object, allowing to later access
     // the shader pointers by name
     HRESULT hr = m_rt_state_object->QueryInterface(IID_PPV_ARGS(&m_rt_state_object_props));
-    if (!HRESULT_VALID(hr)) { return; }
-}
+    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
 
-//-----------------------------------------------------------------------------
-//
-// Allocate the buffer holding the raytracing output, with the same size as the
-// output image
-//
-void c_renderer_dx12::create_raytracing_output_buffer()
-{
-    //D3D12_RESOURCE_DESC resDesc = {};
-    //resDesc.DepthOrArraySize = 1;
-    //resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    //// The backbuffer is actually DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, but sRGB
-    //// formats cannot be used with UAVs. For accuracy we should convert to sRGB
-    //// ourselves in the shader
-    //resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    //
-    //resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-    //resDesc.Width = RENDER_GLOBALS.render_bounds.width;
-    //resDesc.Height = RENDER_GLOBALS.render_bounds.height;
-    //resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    //resDesc.MipLevels = 1;
-    //resDesc.SampleDesc.Count = 1;
-    //HRESULT hr = m_device->CreateCommittedResource
-    //(
-    //    &nv_helpers_dx12::kDefaultHeapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
-    //    D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(&m_output_resource)
-    //);
+    return K_SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -395,24 +486,15 @@ void c_renderer_dx12::create_raytracing_output_buffer()
 // Create the main heap used by the shaders, which will give access to the
 // raytracing output and the top-level acceleration structure
 //
-void c_renderer_dx12::create_shader_resource_heap(bool update_only)
+// $TODO: textures per object!
+void c_renderer_dx12::update_shader_resource_heap(c_scene* const scene)
 {
-    // Create a SRV/UAV/CBV descriptor heap. We need 2 entries - 1 UAV for the
-    // raytracing output and 1 SRV for the TLAS
-    if (!update_only)
-    {
-        m_srv_uav_heap = nv_helpers_dx12::CreateDescriptorHeap(m_device, 3 * FRAME_BUFFER_COUNT, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
-    }
-
     const dword increment_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-    // Get a handle to the heap memory on the CPU side, to be able to write the
-    // descriptors directly
-    CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(m_srv_uav_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index * 3, increment_size);
+    // Get a handle to the heap memory on the CPU side, to be able to write the descriptors directly
+    CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(m_srv_uav_heap->Heap()->GetCPUDescriptorHandleForHeapStart(), m_frame_index * 3, increment_size);
     
-    // Create the UAV. Based on the root signature we created it is the first
-    // entry. The Create*View methods write the view information directly into
-    // srvHandle
+    // Create the UAV. Based on the root signature we created it is the first entry. The Create*View methods write the view information directly into srvHandle
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
     m_device->CreateUnorderedAccessView(m_render_targets[_render_target_raytrace]->get_frame_resource(0, m_frame_index), nullptr, &uavDesc, srvHandle);
@@ -440,6 +522,42 @@ void c_renderer_dx12::create_shader_resource_heap(bool update_only)
     cbvDesc.BufferLocation = objbuffer->get_gpu_address(m_frame_index, 0); // $TODO: per object? we don't actually use the object world matrix so we should be fine
     cbvDesc.SizeInBytes = objbuffer->get_buffer_size();
     m_device->CreateConstantBufferView(&cbvDesc, srvHandle);
+
+    //srvHandle.ptr += increment_size;
+
+    srvHandle.InitOffsetted(m_srv_uav_heap->Heap()->GetCPUDescriptorHandleForHeapStart(), FRAME_BUFFER_COUNT * 3, increment_size);
+    std::vector<c_scene_object*> objects = *scene->get_objects();
+    CreateShaderResourceView(m_device, (ID3D12Resource*)objects[0]->get_material()->get_texture(0)->get_resources()->resource, srvHandle);
+    srvHandle.ptr += increment_size;
+    CreateShaderResourceView(m_device, (ID3D12Resource*)objects[0]->get_material()->get_texture(1)->get_resources()->resource, srvHandle);
+    srvHandle.ptr += increment_size;
+    CreateShaderResourceView(m_device, (ID3D12Resource*)objects[0]->get_material()->get_texture(2)->get_resources()->resource, srvHandle);
+    srvHandle.ptr += increment_size;
+    CreateShaderResourceView(m_device, (ID3D12Resource*)objects[0]->get_material()->get_texture(3)->get_resources()->resource, srvHandle);
+    srvHandle.ptr += increment_size;
+
+
+    // FOR EACH OBJECT
+    //std::vector<c_scene_object*> objects = *scene->get_objects();
+    //for (dword object_index = 0; object_index < /*objects.size()*/1; object_index++)
+    //{
+    //    CD3DX12_CPU_DESCRIPTOR_HANDLE descriptor_handle(m_srv_uav_heap->GetCPUDescriptorHandleForHeapStart(), object_index, increment_size);
+    //    CreateShaderResourceView(m_device, (ID3D12Resource*)objects[object_index]->get_material()->get_texture(0)->get_resources()->resource, descriptor_handle);
+    //
+    //    CD3DX12_GPU_DESCRIPTOR_HANDLE texHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(m_srv_uav_heap->GetGPUDescriptorHandleForHeapStart(), object_index, increment_size);
+    //    m_texture_handles.push_back(texHandle);
+    //
+    //    srvHandle.ptr += increment_size;
+    //}
+    
+    //D3D12_SAMPLER_DESC samplerDesc = {};
+    //samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    //samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    //samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    //samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    //
+    //CD3DX12_CPU_DESCRIPTOR_HANDLE samplerHandle(m_sampler_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER));
+    //m_device->CreateSampler(&samplerDesc, samplerHandle);
 }
 
 //-----------------------------------------------------------------------------
@@ -451,7 +569,7 @@ void c_renderer_dx12::create_shader_resource_heap(bool update_only)
 // contains the ray generation shader, the miss shaders, then the hit groups.
 // Using the helper class, those can be specified in arbitrary order.
 //
-void c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool update_only)
+bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool update_only)
 {
     // The SBT helper class collects calls to Add*Program.  If called several
     // times, the helper must be emptied before re-adding shaders.
@@ -460,7 +578,7 @@ void c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     // The pointer to the beginning of the heap is the only parameter required by
     // shaders without root parameters
     const dword increment_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-    CD3DX12_GPU_DESCRIPTOR_HANDLE srvUavHeapHandle(m_srv_uav_heap->GetGPUDescriptorHandleForHeapStart(), m_frame_index * 3, increment_size);
+    CD3DX12_GPU_DESCRIPTOR_HANDLE srvUavHeapHandle(m_srv_uav_heap->Heap()->GetGPUDescriptorHandleForHeapStart(), m_frame_index * 3, increment_size);
 
     // The helper treats both root parameter pointers and heap pointers as void*,
     // while DX12 uses the
@@ -477,16 +595,21 @@ void c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
 
     // Adding the triangle hit shader
     std::vector<c_scene_object*> objects = *scene->get_objects();
-    std::vector<void*> geometry_data;
-    for (c_scene_object* const object : *scene->get_objects())
+    // Offset descriptor heap to texture table
+    srvUavHeapHandle.InitOffsetted(m_srv_uav_heap->Heap()->GetGPUDescriptorHandleForHeapStart(), FRAME_BUFFER_COUNT * 3, increment_size);
+    for (dword object_index = 0; object_index < objects.size(); object_index++)
     {
-        geometry_data.push_back((void*)object->get_model()->get_resources()->vertex_buffer->GetGPUVirtualAddress());
-        geometry_data.push_back((void*)object->get_model()->get_resources()->index_buffer->GetGPUVirtualAddress());
+        std::vector<void*> geometry_data;
+
+        geometry_data.push_back((void*)objects[object_index]->get_model()->get_resources()->vertex_buffer->GetGPUVirtualAddress());
+        geometry_data.push_back((void*)objects[object_index]->get_model()->get_resources()->index_buffer->GetGPUVirtualAddress());
+        geometry_data.push_back((void*)srvUavHeapHandle.ptr); // texture table
+
+        m_sbt_helper.AddHitGroup(L"hit_group", geometry_data);
     }
-    m_sbt_helper.AddHitGroup(L"hit_group", geometry_data);
 
     // Compute the size of the SBT given the number of shaders and their parameters
-    uint32_t sbtSize = m_sbt_helper.ComputeSBTSize();
+    uint32_t sbt_size = m_sbt_helper.ComputeSBTSize();
 
     // Create the SBT on the upload heap. This is required as the helper will use
     // mapping to write the SBT contents. After the SBT compilation it could be
@@ -495,13 +618,117 @@ void c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     {
         for (dword i = 0; i < FRAME_BUFFER_COUNT; i++)
         {
-            m_sbt_storage[i] = nv_helpers_dx12::CreateBuffer(m_device, sbtSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+            m_sbt_storage[i] = nv_helpers_dx12::CreateBuffer(m_device, sbt_size, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+            if (!m_sbt_storage[i])
+            {
+                LOG_ERROR("Could not allocate the shader binding table! Failed for frame index %d", i);
+                return K_FAILURE;
+            }
         }
-    }
-    if (!m_sbt_storage[m_frame_index])
-    {
-        throw std::logic_error("Could not allocate the shader binding table");
     }
     // Compile the SBT from the shader and parameters info
     m_sbt_helper.Generate(m_sbt_storage[m_frame_index], m_rt_state_object_props);
+
+    return K_SUCCESS;
 }
+
+
+// Code graveyard
+/*
+// $TODO: REMOVE THIS!
+void c_renderer_dx12::create_bottom_level_as(c_scene* const scene, s_acceleration_structure_buffers& out_buffers, bool update_only)
+{
+    nv_helpers_dx12::BottomLevelASGenerator bottomLevelAS;
+
+    // Adding all vertex buffers and not transforming their position.
+    for (c_scene_object* object : *scene->get_objects())
+    {
+        const s_geometry_resources* geometry = object->get_model()->get_resources();
+        bottomLevelAS.AddVertexBuffer(geometry->vertex_buffer, 0, geometry->vertex_count, sizeof(vertex), geometry->index_buffer, 0, geometry->index_count, nullptr, 0, true);
+    }
+
+    // The AS build requires some scratch space to store temporary information.
+    // The amount of scratch memory is dependent on the scene complexity.
+    UINT64 scratchSizeInBytes = 0;
+    // The final AS also needs to be stored in addition to the existing vertex
+    // buffers. It size is also dependent on the scene complexity.
+    UINT64 resultSizeInBytes = 0;
+
+    bottomLevelAS.ComputeASBufferSizes(m_device, true, &scratchSizeInBytes, &resultSizeInBytes);
+
+    if (!update_only)
+    {
+        // Once the sizes are obtained, the application is responsible for allocating
+        // the necessary buffers. Since the entire generation will be done on the GPU,
+        // we can directly allocate those on the default heap
+        //s_acceleration_structure_buffers buffers;
+        out_buffers.pScratch = nv_helpers_dx12::CreateBuffer(
+            m_device, scratchSizeInBytes,
+            D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            nv_helpers_dx12::kDefaultHeapProps);
+        out_buffers.pResult = nv_helpers_dx12::CreateBuffer(
+            m_device, resultSizeInBytes,
+            D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+            D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+            nv_helpers_dx12::kDefaultHeapProps);
+    }
+    // Build the acceleration structure. Note that this call integrates a barrier
+    // on the generated AS, so that it can be used to compute a top-level AS right
+    // after this method.
+    bottomLevelAS.Generate(m_command_list, out_buffers.pScratch, out_buffers.pResult, update_only, update_only ? out_buffers.pResult : nullptr);
+
+    //return buffers;
+}
+
+//-----------------------------------------------------------------------------
+// Create the main acceleration structure that holds all instances of the scene.
+// Similarly to the bottom-level AS generation, it is done in 3 steps: gathering
+// the instances, computing the memory requirements for the AS, and building the
+// AS itself
+//
+void c_renderer_dx12::create_top_level_as(const std::vector<std::pair<s_acceleration_structure_buffers, DirectX::XMMATRIX>>& instances, bool update_only) // pair of bottom level AS and matrix of the instance
+{
+    if (!update_only)
+    {
+        // Gather all the instances into the builder helper
+        for (size_t i = 0; i < instances.size(); i++)
+        {
+            m_top_level_as_generator.AddInstance(instances[i].first.pResult, instances[i].second, static_cast<dword>(i), static_cast<dword>(i));
+        }
+
+        // As for the bottom-level AS, the building the AS requires some scratch space
+        // to store temporary data in addition to the actual AS. In the case of the
+        // top-level AS, the instance descriptors also need to be stored in GPU
+        // memory. This call outputs the memory requirements for each (scratch,
+        // results, instance descriptors) so that the application can allocate the
+        // corresponding memory
+        UINT64 scratchSize, resultSize, instanceDescsSize;
+
+        m_top_level_as_generator.ComputeASBufferSizes(m_device, true, &scratchSize, &resultSize, &instanceDescsSize);
+
+        // Create the scratch and result buffers. Since the build is all done on GPU,
+        // those can be allocated on the default heap
+        m_top_level_as_buffers.pScratch = nv_helpers_dx12::CreateBuffer(
+            m_device, scratchSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            nv_helpers_dx12::kDefaultHeapProps);
+        m_top_level_as_buffers.pResult = nv_helpers_dx12::CreateBuffer(
+            m_device, resultSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+            D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+            nv_helpers_dx12::kDefaultHeapProps);
+
+        // The buffer describing the instances: ID, shader binding information,
+        // matrices ... Those will be copied into the buffer by the helper through
+        // mapping, so the buffer has to be allocated on the upload heap.
+        m_top_level_as_buffers.pInstanceDesc = nv_helpers_dx12::CreateBuffer(
+            m_device, instanceDescsSize, D3D12_RESOURCE_FLAG_NONE,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+    }
+
+    // After all the buffers are allocated, or if only an update is required, we
+    // can build the acceleration structure. Note that in the case of the update
+    // we also pass the existing AS as the 'previous' AS, so that it can be
+    // refitted in place.
+    m_top_level_as_generator.Generate(m_command_list, m_top_level_as_buffers.pScratch, m_top_level_as_buffers.pResult, m_top_level_as_buffers.pInstanceDesc, update_only, update_only ? m_top_level_as_buffers.pResult : nullptr);
+}
+*/

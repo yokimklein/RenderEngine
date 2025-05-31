@@ -2,27 +2,67 @@
 
 struct vertex
 {
-    float4 position : POSITION; // float4 for padding, ignore w value
+    float3 position : POSITION;
     float3 normal : NORMAL;
-    float2 tex_coord : TEXCOORD0; // How is this padding correctly? TODO: verify struct passing in and out correctly in debugger
+    float2 tex_coord : TEXCOORD0;
     float3 tangent : TANGENT;
     float3 binormal : BINORMAL;
 };
 StructuredBuffer<vertex> b_vertex : register(t0);
 StructuredBuffer<int> b_indices : register(t1);
 
+SamplerState texture_sampler : register(s0);
+Texture2D texture_albedo : register(t2);
+Texture2D texture_roughness : register(t3);
+Texture2D texture_metallic : register(t4);
+Texture2D texture_normal : register(t5);
+
+uint3 Load3x32BitIndices(uint offsetBytes)
+{
+    uint3 indices;
+    
+    uint status;
+    indices.x = b_indices.Load(offsetBytes, status);
+    indices.y = b_indices.Load(offsetBytes + 4, status);
+    indices.z = b_indices.Load(offsetBytes + 8, status);
+
+    return indices;
+}
+
+float2 GetUVAttribute(uint byteOffset)
+{
+    return b_vertex[PrimitiveIndex()].tex_coord;
+}
+
 [shader("closesthit")] 
 void closest_hit(inout hit_info payload, attributes attrib) 
-{
-    float3 barycentrics = float3(1.f - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
+{    
+    uint primitiveIndex = PrimitiveIndex();
+    uint i0 = b_indices[primitiveIndex * 3 + 0];
+    uint i1 = b_indices[primitiveIndex * 3 + 1];
+    uint i2 = b_indices[primitiveIndex * 3 + 2];
 
-    const float3 A = float3(1, 0, 0);
-    const float3 B = float3(0, 1, 0);
-    const float3 C = float3(0, 0, 1);
+    vertex v0 = b_vertex[i0];
+    vertex v1 = b_vertex[i1];
+    vertex v2 = b_vertex[i2];
 
-    //uint vertId = 3 * PrimitiveIndex();
-    //float3 hitColor = b_vertex[vertId + 0].color * barycentrics.x + b_vertex[vertId + 1].color * barycentrics.y + b_vertex[vertId + 2].color * barycentrics.z;
-    float3 hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
+    float3 bary = float3(1.0 - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
+    float2 uv = v0.tex_coord * bary.x + v1.tex_coord * bary.y + v2.tex_coord * bary.z;
 
-    payload.color_and_distance = float4(hitColor, RayTCurrent());
+    //float3 albedo = float3(1, 1, 1);
+    
+    float3 albedo = texture_albedo.SampleLevel(texture_sampler, uv, 0).rgb;
+    payload.color_and_distance = float4(albedo, RayTCurrent());
+    
+    //payload.color_and_distance = float4(attrib.bary.x, attrib.bary.y, 1.0 - attrib.bary.x - attrib.bary.y, RayTCurrent());
+    //uv.y = 1.0 - uv.y;
+    //if (bary.x > 0.99f)
+    
+    //    payload.color_and_distance = float4(v0.tex_coord, 0, 1);
+    //else if (bary.y > 0.99f)
+    //    payload.color_and_distance = float4(v1.tex_coord, 0, 1);
+    //else if (bary.z > 0.99f)
+    //    payload.color_and_distance = float4(v2.tex_coord, 0, 1);
+    
+    //payload.color_and_distance = float4(uv, 0.0f, 1.0f);
 }
