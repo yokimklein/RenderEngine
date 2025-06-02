@@ -1068,7 +1068,7 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     else
     {
         // Start raster render for ImGUI
-        //m_render_targets[_render_target_raytrace]->begin_render(m_command_list, m_frame_index, false);
+        m_render_targets[_render_target_raytrace]->begin_render(m_command_list, m_frame_index, false);
     }
 
     imgui_overlay(scene, this, fps_counter);

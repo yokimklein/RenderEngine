@@ -13,29 +13,10 @@ StructuredBuffer<vertex> b_vertex : register(t0);
 StructuredBuffer<int> b_indices : register(t1);
 
 SamplerState texture_sampler : register(s0);
-Texture2D textures_albedo[] : register(t2, space1);
-
-//Texture2D texture_albedo : register(t2, space1);
-//Texture2D textures_roughness : register(t3);
-//Texture2D textures_metallic : register(t4);
-//Texture2D textures_normal : register(t5);
-
-uint3 Load3x32BitIndices(uint offsetBytes)
-{
-    uint3 indices;
-    
-    uint status;
-    indices.x = b_indices.Load(offsetBytes, status);
-    indices.y = b_indices.Load(offsetBytes + 4, status);
-    indices.z = b_indices.Load(offsetBytes + 8, status);
-
-    return indices;
-}
-
-float2 GetUVAttribute(uint byteOffset)
-{
-    return b_vertex[PrimitiveIndex()].tex_coord;
-}
+Texture2D texture_albedo : register(t2, space1);
+//Texture2D texture_roughness : register(t3);
+//Texture2D texture_metallic : register(t4);
+//Texture2D texture_normal : register(t5);
 
 [shader("closesthit")] 
 void closest_hit(inout hit_info payload, attributes attrib) 
@@ -52,9 +33,6 @@ void closest_hit(inout hit_info payload, attributes attrib)
     float3 bary = float3(1.0 - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
     float2 uv = v0.tex_coord * bary.x + v1.tex_coord * bary.y + v2.tex_coord * bary.z;
 
-    uint instance_index = InstanceIndex();
-    Texture2D texture_albedo = textures_albedo[instance_index];
-    
     float mip = 0.0f;
     //float mip = log2(1.0f / RayTCurrent()); // crude approximation
     float3 albedo = texture_albedo.SampleLevel(texture_sampler, uv, mip).rgb;
