@@ -107,7 +107,8 @@ private:
 
 	bool m_initialised;
 #ifdef _DEBUG
-	ID3D12Debug* m_dx12_debug;
+	ID3D12Debug1* m_dx12_debug;
+	ID3D12DeviceRemovedExtendedDataSettings* m_dred_settings;
 #endif
 	IDXGIFactory7* m_factory; // Provides methods for generating DXGI objects
 	ID3D12Device5* m_device; // Virtual adapter, representing a GPU
@@ -194,7 +195,13 @@ private:
 	//ID3D12DescriptorHeap* m_sampler_heap;
 
 	nv_helpers_dx12::ShaderBindingTableGenerator m_sbt_helper;
-	ID3D12Resource* m_sbt_storage[FRAME_BUFFER_COUNT];
+	ID3D12Resource* m_sbt_storage/*[FRAME_BUFFER_COUNT]*/; // TODO: buffer this again? there's screen tearing going on atm
+	qword m_ray_gen_table_size;
+	qword m_ray_gen_entry_size;
+	qword m_miss_table_size;
+	qword m_miss_entry_size;
+	qword m_hit_table_size;
+	qword m_hit_entry_size;
 
 	c_shader_input* m_ray_gen_input;
 

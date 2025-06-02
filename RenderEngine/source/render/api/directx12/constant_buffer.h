@@ -31,7 +31,7 @@ static const wchar_t* const get_constant_buffer_name(const e_render_pass render_
 class c_constant_buffer
 {
 public:
-	c_constant_buffer(ID3D12Device* const device, const e_render_pass render_pass,
+	c_constant_buffer(ID3D12Device5* const device, const e_render_pass render_pass,
 		const e_constant_buffers buffer_type, const dword buffer_struct_size, const D3D12_SHADER_VISIBILITY visibility);
 	~c_constant_buffer();
 

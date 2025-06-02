@@ -4,7 +4,7 @@
 #include <render/api/directx12/helpers.h>
 #include <render/api/directx12/constant_buffer.h>
 
-c_shader_input::c_shader_input(ID3D12Device* const device, const dword textures_count,
+c_shader_input::c_shader_input(ID3D12Device5* const device, const dword textures_count,
     c_constant_buffer* const constant_buffers[], const dword constant_buffer_count,
     const D3D12_INPUT_ELEMENT_DESC input_desc[], const dword input_element_count,
     const D3D12_DESCRIPTOR_RANGE texture_ranges[], const dword texture_range_count,
@@ -123,7 +123,7 @@ c_shader_input::c_shader_input(ID3D12Device* const device, const dword textures_
     if (hr == S_OK)
     {
         hr = device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_root_signature));
-        if (!HRESULT_VALID(hr))
+        if (!HRESULT_VALID(device, hr))
         {
             m_root_signature = nullptr;
         }
@@ -134,7 +134,7 @@ c_shader_input::c_shader_input(ID3D12Device* const device, const dword textures_
         {
             LOG_ERROR(L"%hs", (char*)error->GetBufferPointer());
         }
-        HRESULT_VALID(hr);
+        HRESULT_VALID(device, hr);
         return;
     }
     delete[] root_parameters;

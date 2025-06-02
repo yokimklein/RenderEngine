@@ -35,6 +35,8 @@ dispatch rays description.
 */
 
 #include "ShaderBindingTableGenerator.h"
+#include <string>
+#include <stdexcept>
 
 // Helper to compute aligned buffer sizes
 #ifndef ROUND_UP
@@ -215,7 +217,7 @@ uint32_t ShaderBindingTableGenerator::CopyShaderData(
       throw std::logic_error(std::string(errMsg.begin(), errMsg.end()));
     }
     // Copy the shader identifier
-    memcpy(pData, id, m_progIdSize);
+    memcpy(pData, id, m_progIdSize); // D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES
     // Copy all its resources pointers or values in bulk
     memcpy(pData + m_progIdSize, shader.m_inputData.data(), shader.m_inputData.size() * 8);
 

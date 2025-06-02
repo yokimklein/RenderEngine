@@ -24,7 +24,7 @@ enum e_gbuffers
 
 	k_gbuffer_count
 };
-static const char* const get_gbuffer_name(const e_gbuffers buffer_type);
+const char* const get_gbuffer_name(const e_gbuffers buffer_type);
 
 enum e_light_buffers
 {

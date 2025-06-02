@@ -5,7 +5,7 @@
 class c_descriptor_heap
 {
 public:
-	c_descriptor_heap(ID3D12Device* const device, const wchar_t* name, const D3D12_DESCRIPTOR_HEAP_DESC heap_description);
+	c_descriptor_heap(ID3D12Device5* const device, const wchar_t* name, const D3D12_DESCRIPTOR_HEAP_DESC heap_description);
 	~c_descriptor_heap();
 
 	bool allocate(dword* const out_index);

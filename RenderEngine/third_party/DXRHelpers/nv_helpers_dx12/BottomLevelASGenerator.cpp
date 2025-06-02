@@ -30,6 +30,7 @@ Contacts for feedback:
 */
 
 #include "BottomLevelASGenerator.h"
+#include <stdexcept>
 
 // Helper to compute aligned buffer sizes
 #ifndef ROUND_UP

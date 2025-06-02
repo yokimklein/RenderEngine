@@ -263,5 +263,9 @@
     <CopyFileToFolders Include="assets\shaders\raytrace\Common.hlsl" />
     <CopyFileToFolders Include="assets\shaders\raytrace\Hit.hlsl" />
     <CopyFileToFolders Include="assets\shaders\raytrace\Miss.hlsl" />
+    <CopyFileToFolders Include="assets\shaders\pbr_raster.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

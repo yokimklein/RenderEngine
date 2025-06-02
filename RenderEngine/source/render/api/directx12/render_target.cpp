@@ -36,7 +36,7 @@ const wchar_t* const get_render_target_name(const e_render_targets target_type)
     return k_render_target_names[target_type];
 }
 
-c_render_target::c_render_target(ID3D12Device* const device, c_shader_input* const shader_input, const e_render_targets target_type)
+c_render_target::c_render_target(ID3D12Device5* const device, c_shader_input* const shader_input, const e_render_targets target_type)
     : m_target_type(target_type)
     , m_device(device)
     , m_render_target_view_heap(nullptr)
@@ -104,7 +104,7 @@ c_render_target::c_render_target(ID3D12Device* const device, c_shader_input* con
                 &clear_value,
                 IID_PPV_ARGS(&m_render_target_buffers[resource_index])
             );
-            if (!HRESULT_VALID(hr))
+            if (!HRESULT_VALID(device, hr))
             {
                 LOG_ERROR(L"Render target buffer resource failed to create!");
                 return;
@@ -152,7 +152,7 @@ c_render_target::c_render_target(ID3D12Device* const device, c_shader_input* con
                 &depth_optimized_clear_value,
                 IID_PPV_ARGS(&m_depth_stencil_buffers[frame_buffer_index])
             );
-            if (!HRESULT_VALID(hr))
+            if (!HRESULT_VALID(device, hr))
             {
                 LOG_ERROR(L"depth/stencil buffer failed to create!");
                 return;

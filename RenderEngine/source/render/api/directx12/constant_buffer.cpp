@@ -78,7 +78,7 @@ const wchar_t* const get_constant_buffer_name(const e_render_pass render_pass, c
     return L"Unknown Constant Buffer";
 }
 
-c_constant_buffer::c_constant_buffer(ID3D12Device* const device, const e_render_pass render_pass,
+c_constant_buffer::c_constant_buffer(ID3D12Device5* const device, const e_render_pass render_pass,
     const e_constant_buffers buffer_type, const dword buffer_struct_size, const D3D12_SHADER_VISIBILITY visibility)
     : m_buffer_struct_size(buffer_struct_size)
     , m_buffer_aligned_size((buffer_struct_size + 255) & ~255)
@@ -114,13 +114,13 @@ c_constant_buffer::c_constant_buffer(ID3D12Device* const device, const e_render_
     {
         // 64KiB constant buffer - Must be a multiple of 64KiB for single-textures and constant buffers
         hr = CreateUploadBuffer(device, nullptr, 64, 1024, &m_upload_buffers[frame_index]);
-        if (!HRESULT_VALID(hr))
+        if (!HRESULT_VALID(device, hr))
         {
             LOG_WARNING(L"upload buffer creation failed! setting nullptr");
             m_upload_buffers[frame_index] = nullptr;
         }
         hr = m_upload_buffers[frame_index]->Map(0, &read_range, reinterpret_cast<void**>(&m_gpu_address[frame_index]));
-        if (!HRESULT_VALID(hr))
+        if (!HRESULT_VALID(device, hr))
         {
             m_gpu_address[frame_index] = nullptr;
         }

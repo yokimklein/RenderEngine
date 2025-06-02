@@ -1,4 +1,5 @@
 #include "common.hlsl"
+#include "..\pbr.hlsl"
 
 struct vertex
 {
@@ -12,10 +13,12 @@ StructuredBuffer<vertex> b_vertex : register(t0);
 StructuredBuffer<int> b_indices : register(t1);
 
 SamplerState texture_sampler : register(s0);
-Texture2D texture_albedo : register(t2);
-Texture2D texture_roughness : register(t3);
-Texture2D texture_metallic : register(t4);
-Texture2D texture_normal : register(t5);
+Texture2D textures_albedo[] : register(t2, space1);
+
+//Texture2D texture_albedo : register(t2, space1);
+//Texture2D textures_roughness : register(t3);
+//Texture2D textures_metallic : register(t4);
+//Texture2D textures_normal : register(t5);
 
 uint3 Load3x32BitIndices(uint offsetBytes)
 {
@@ -49,9 +52,12 @@ void closest_hit(inout hit_info payload, attributes attrib)
     float3 bary = float3(1.0 - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
     float2 uv = v0.tex_coord * bary.x + v1.tex_coord * bary.y + v2.tex_coord * bary.z;
 
-    //float3 albedo = float3(1, 1, 1);
+    uint instance_index = InstanceIndex();
+    Texture2D texture_albedo = textures_albedo[instance_index];
     
-    float3 albedo = texture_albedo.SampleLevel(texture_sampler, uv, 0).rgb;
+    float mip = 0.0f;
+    //float mip = log2(1.0f / RayTCurrent()); // crude approximation
+    float3 albedo = texture_albedo.SampleLevel(texture_sampler, uv, mip).rgb;
     payload.color_and_distance = float4(albedo, RayTCurrent());
     
     //payload.color_and_distance = float4(attrib.bary.x, attrib.bary.y, 1.0 - attrib.bary.x - attrib.bary.y, RayTCurrent());
@@ -64,5 +70,6 @@ void closest_hit(inout hit_info payload, attributes attrib)
     //else if (bary.z > 0.99f)
     //    payload.color_and_distance = float4(v2.tex_coord, 0, 1);
     
+    //float3 albedo = float3(1, 1, 1);
     //payload.color_and_distance = float4(uv, 0.0f, 1.0f);
 }

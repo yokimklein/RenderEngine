@@ -32,6 +32,7 @@
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <EnableUnitySupport>true</EnableUnitySupport>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -40,6 +41,7 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <EnableUnitySupport>true</EnableUnitySupport>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -47,6 +49,7 @@
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <EnableUnitySupport>true</EnableUnitySupport>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -55,6 +58,7 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <EnableUnitySupport>true</EnableUnitySupport>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -106,9 +110,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers;$(ProjectDir)third_party\nvapi</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -117,7 +121,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;$(ProjectDir)third_party\nvapi\amd64\nvapi64.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);third_party/dcx/</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
@@ -141,9 +145,9 @@ echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_com
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers;$(ProjectDir)third_party\nvapi</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -154,7 +158,7 @@ echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_com
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;$(ProjectDir)third_party\nvapi\amd64\nvapi64.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);third_party/dcx/</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
@@ -176,9 +180,9 @@ echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_com
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers;$(ProjectDir)third_party\nvapi</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -188,7 +192,7 @@ echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_com
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;$(ProjectDir)third_party\nvapi\amd64\nvapi64.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);third_party/dcx/</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
@@ -212,9 +216,9 @@ echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_com
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers;$(ProjectDir)third_party\nvapi</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -225,7 +229,7 @@ echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_com
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;dxcompiler.lib;$(ProjectDir)third_party\nvapi\amd64\nvapi64.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);third_party/dcx/</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
@@ -484,7 +488,26 @@ echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_com
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders\raytrace</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="assets\shaders\pbr_raster.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">$(OutputPath)assets\shaders</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets" Condition="Exists('..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets'))" />
+  </Target>
 </Project>

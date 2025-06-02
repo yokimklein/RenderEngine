@@ -19,7 +19,7 @@ enum e_constant_buffers;
 class c_shader_input
 {
 public:
-	c_shader_input(ID3D12Device* const device, const dword textures_count,
+	c_shader_input(ID3D12Device5* const device, const dword textures_count,
 		c_constant_buffer* const constant_buffers[], const dword constant_buffer_count,
 		const D3D12_INPUT_ELEMENT_DESC input_desc[], const dword input_element_count,
 		const D3D12_DESCRIPTOR_RANGE texture_ranges[], const dword texture_range_count,

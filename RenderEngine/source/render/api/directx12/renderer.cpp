@@ -24,6 +24,8 @@
 #include <scene/scene.h>
 #include <render/imgui_overlay.h>
 #include <ImGuizmo.h>
+#include <nvapi.h>
+#include <comdef.h>
 
 // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12HelloWorld/src/HelloTriangle/D3D12HelloTriangle.cpp
 // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12HelloWorld/src/HelloTriangle/DXSample.cpp
@@ -38,15 +40,31 @@ bool c_renderer_dx12::initialise_factory()
 #ifdef _DEBUG
     // Enable DirectX debug layer on debug enabled builds
     hr = D3D12GetDebugInterface(IID_PPV_ARGS(&m_dx12_debug));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     m_dx12_debug->EnableDebugLayer();
+    m_dx12_debug->SetEnableGPUBasedValidation(TRUE);
+    
     dxgi_factory_flags = DXGI_CREATE_FACTORY_DEBUG;
 #endif
 
     hr = CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(&m_factory));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     return K_SUCCESS;
+}
+
+// Validation callback
+static void __stdcall validation_message_callback(void* user_data, NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY severity, const char* message_code, const char* message, const char* message_details)
+{
+    switch (severity)
+    {
+        case NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_ERROR:
+            LOG_ERROR("Ray Tracing Validation Error: [%hs] %hs\n%hs", message_code, message, message_details);
+            break;
+        case NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_WARNING:
+            LOG_WARNING("Ray Tracing Validation Warning: [%hs] %hs\n%hs", message_code, message, message_details);
+            break;
+    }
 }
 
 // Get the first available highest performance hardware adapter that supports DX12
@@ -85,7 +103,7 @@ bool c_renderer_dx12::initialise_device_adapter()
 
     // Create device from found adapter
     HRESULT hr = D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_device));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     const bool adapter_valid = m_adapter != nullptr;
     assert(adapter_valid);
@@ -95,18 +113,44 @@ bool c_renderer_dx12::initialise_device_adapter()
         return K_FAILURE;
     }
 
-    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
-    m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+#if defined(_DEBUG)
+    if (NvAPI_Initialize() != NVAPI_OK)
+    {
+        LOG_ERROR("NvAPI failed to initialise!");
+        return K_FAILURE;
+    }
+    if (NvAPI_D3D12_EnableRaytracingValidation(m_device, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE) != NVAPI_OK)
+    {
+        LOG_ERROR("NvAPI failed to enabled RT validation!");
+        return K_FAILURE;
+    }
+    void* nvapiValidationCallbackHandle = nullptr;
+    if (NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_device, &validation_message_callback, nullptr, &nvapiValidationCallbackHandle) != NVAPI_OK)
+    {
+        LOG_ERROR("NvAPI failed to register RT validation callback message!");
+        return K_FAILURE;
+    }
+#endif
 
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+    hr = m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     if (options5.RaytracingTier < D3D12_RAYTRACING_TIER_1_0)
     {
-        LOG_WARNING("Raytracing not supported by this device!");
+        LOG_ERROR("Raytracing not supported by this device!");
+        return K_FAILURE;
     }
     else
     {
         LOG_MESSAGE("Device supports raytracing tier %d", options5.RaytracingTier);
     }
+#if defined(_DEBUG)
+    hr = D3D12GetDebugInterface(IID_PPV_ARGS(&m_dred_settings));
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
+    m_dred_settings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+    m_dred_settings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+    m_dred_settings->SetWatsonDumpEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+#endif
 
     return K_SUCCESS;
 }
@@ -117,7 +161,7 @@ bool c_renderer_dx12::initialise_command_queue()
     queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     HRESULT hr = m_device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&m_command_queue));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     return K_SUCCESS;
 }
@@ -160,7 +204,7 @@ bool c_renderer_dx12::initialise_swapchain(const HWND hWnd)
     for (dword i = 0; i < FRAME_BUFFER_COUNT; i++)
     {
         hr = m_swapchain->GetBuffer(i, IID_PPV_ARGS(&m_backbuffers[i]));
-        if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+        if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
         m_backbuffers[i]->SetName(L"Swapchain backbuffer");
     }
 
@@ -193,7 +237,7 @@ bool c_renderer_dx12::initialise_command_allocators()
     for (dword i = 0; i < FRAME_BUFFER_COUNT; i++)
     {
         HRESULT hr = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_command_allocators[i]));
-        if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+        if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     }
     return K_SUCCESS;
 }
@@ -201,13 +245,13 @@ bool c_renderer_dx12::initialise_command_allocators()
 bool c_renderer_dx12::initialise_command_list()
 {
     HRESULT hr = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_command_allocators[m_frame_index], NULL, IID_PPV_ARGS(&m_command_list));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     //hr = m_command_list->Close();
-    //if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    //if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     //
     //hr = m_command_list->Reset(m_command_allocators[m_frame_index], NULL);
-    //if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    //if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     return K_SUCCESS;
 }
@@ -219,7 +263,7 @@ bool c_renderer_dx12::initialise_fences()
     for (dword i = 0; i < FRAME_BUFFER_COUNT; i++)
     {
         HRESULT hr = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fences[i]));
-        if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+        if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
         m_fence_values[i] = 0; // initial fence value
     }
 
@@ -231,7 +275,7 @@ bool c_renderer_dx12::initialise_fences()
     if (!fence_valid)
     {
         // just to log a potential error
-        HRESULT_VALID(HRESULT_FROM_WIN32(GetLastError()));
+        HRESULT_VALID(m_device, HRESULT_FROM_WIN32(GetLastError()));
         // return failure anyway, event is already nullptr
         return K_FAILURE;
     }
@@ -359,7 +403,7 @@ bool c_renderer_dx12::initialise_input_layouts()
     );
 
     m_deferred_shader = new c_shader(this, L"assets\\shaders\\default_vs.hlsl", "vs_main", L"assets\\shaders\\deferred.hlsl", "ps_deferred", _input_deferred);
-    m_pbr_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\pbr.hlsl", "ps_deferred_pbr", _input_pbr);
+    m_pbr_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\pbr_raster.hlsl", "ps_deferred_pbr", _input_pbr);
     //m_shading_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\shading.hlsl", "ps_deferred_shading", _input_shading);
     m_texcam_shader = new c_shader(this, L"assets\\shaders\\default_vs.hlsl", "vs_main", L"assets\\shaders\\texcam.hlsl", "ps_sample_texture", _input_texcam);
     
@@ -410,7 +454,7 @@ bool c_renderer_dx12::create_shader(const wchar_t* vs_path, const char* vs_name,
         {
             LOG_ERROR(L"%hs", (char*)error->GetBufferPointer());
         }
-        HRESULT_VALID(hr);
+        HRESULT_VALID(m_device, hr);
         return K_FAILURE;
     }
     // fill out a shader bytecode structure, which is basically just a pointer
@@ -426,7 +470,7 @@ bool c_renderer_dx12::create_shader(const wchar_t* vs_path, const char* vs_name,
         {
             LOG_ERROR(L"%hs", (char*)error->GetBufferPointer());
         }
-        HRESULT_VALID(hr);
+        HRESULT_VALID(m_device, hr);
         return K_FAILURE;
     }
     // fill out shader bytecode structure for pixel shader
@@ -482,7 +526,7 @@ bool c_renderer_dx12::create_shader(const wchar_t* vs_path, const char* vs_name,
 
     // create the pso
     hr = m_device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&pipeline_state));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     out_resources->vertex_shader = vertex_shader;
     out_resources->pixel_shader = pixel_shader;
@@ -535,7 +579,7 @@ bool c_renderer_dx12::create_geometry(vertex vertices[], dword vertices_size, dw
     vector3d* tangents = new vector3d[vertex_count];
     vector3d* binormals = new vector3d[vertex_count];
     hr = ComputeTangentFrame((uint32_t*)indices, face_count, (XMFLOAT3*)positions, (XMFLOAT3*)normals, (XMFLOAT2*)texcoords, vertex_count, (XMFLOAT3*)tangents, (XMFLOAT3*)binormals);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     delete[] positions;
     delete[] normals;
     delete[] texcoords;
@@ -660,7 +704,7 @@ bool c_renderer_dx12::upload_vertex_buffer(const dword vertex_size, const void* 
     // default heap is memory on the GPU. Only the GPU has access to this memory
     // To get data into this heap, we will have to upload the data using an upload heap
     hr = CreateUAVBuffer(m_device, vertices_size, &out_resources->vertex_buffer, D3D12_RESOURCE_STATE_COMMON);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     out_resources->vertex_buffer->SetName(L"Vertex Buffer Resource Heap");
 
     // setup vertex data subresource
@@ -703,7 +747,7 @@ bool c_renderer_dx12::upload_index_buffer(const dword indices[], const dword ind
 
     // create default heap to hold index buffer on GPU
     hr = CreateUAVBuffer(m_device, indices_size, &out_resources->index_buffer, D3D12_RESOURCE_STATE_COMMON);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     out_resources->index_buffer->SetName(L"Index Buffer Resource Heap");
 
     // setup index data subresource
@@ -746,7 +790,7 @@ bool c_renderer_dx12::load_texture(const e_texture_type texture_type, const wcha
     ResourceUploadBatch resource_upload(m_device);
     resource_upload.Begin();
     hr = CreateDDSTextureFromFile(m_device, resource_upload, file_path, &texture_resource);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     texture_resource->SetName(L"Texture Buffer Resource Heap");
     std::future<void> upload_thread = resource_upload.End(m_command_queue);
     // wait for upload thread to terminate
@@ -762,7 +806,7 @@ bool c_renderer_dx12::upload_assets()
     HRESULT hr = S_OK;
     // Now we execute the command list to upload the initial assets (triangle data)
     hr = m_command_list->Close();
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     ID3D12CommandList* pp_command_lists[] = { m_command_list };
     m_command_queue->ExecuteCommandLists(_countof(pp_command_lists), pp_command_lists);
@@ -770,7 +814,7 @@ bool c_renderer_dx12::upload_assets()
     // increment the fence value now, otherwise the buffer might not be uploaded by the time we start drawing
     m_fence_values[m_frame_index]++;
     hr = m_command_queue->Signal(m_fences[m_frame_index], m_fence_values[m_frame_index]);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     return K_SUCCESS;
 }
@@ -831,7 +875,7 @@ c_renderer_dx12::~c_renderer_dx12()
 
     // get swapchain out of full screen before exiting
     BOOL fs = false;
-    if (HRESULT_VALID(m_swapchain->GetFullscreenState(&fs, nullptr)))
+    if (HRESULT_VALID(m_device, m_swapchain->GetFullscreenState(&fs, nullptr)))
     {
         m_swapchain->SetFullscreenState(false, nullptr);
     }
@@ -899,7 +943,7 @@ bool c_renderer_dx12::initialise(const HWND hWnd, c_scene* const scene)
     if (!this->initialise_swapchain(hWnd)) { return K_FAILURE; }
 
     // Disable DXGI responding to alt + enter for toggling fullscreen
-    //if (!HRESULT_VALID(m_factory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER))) return false;
+    //if (!HRESULT_VALID(m_device, m_factory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER))) return false;
 
     // Command allocators
     if (!this->initialise_command_allocators()) { return K_FAILURE; }
@@ -954,7 +998,7 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     // we can only reset an allocator once the gpu is done with it
     // resetting an allocator frees the memory that the command list was stored in
     hr = m_command_allocators[m_frame_index]->Reset();
-    if (!HRESULT_VALID(hr)) { return; }
+    if (!HRESULT_VALID(m_device, hr)) { return; }
 
     // reset the command list. by resetting the command list we are putting it into
     // a recording state so we can start recording commands into the command allocator.
@@ -967,7 +1011,7 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     // anything but an initial default pipeline, which is what we get by setting
     // the second parameter to NULL
     hr = m_command_list->Reset(m_command_allocators[m_frame_index], NULL);
-    if (!HRESULT_VALID(hr)) { return; }
+    if (!HRESULT_VALID(m_device, hr)) { return; }
     // here we start recording commands into the commandList (which all the commands will be stored in the commandAllocator)
 
     m_command_list->RSSetViewports(1, &m_viewport); // set the viewports
@@ -1053,7 +1097,7 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     TransitionResource(m_command_list, m_backbuffers[m_frame_index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
 
     hr = m_command_list->Close();
-    if (!HRESULT_VALID(hr)) { return; }
+    if (!HRESULT_VALID(m_device, hr)) { return; }
 }
 
 void c_renderer_dx12::update_raster(c_scene* const scene)
@@ -1283,11 +1327,18 @@ void c_renderer_dx12::render_frame(c_scene* const scene, dword fps_counter)
     // has finished because the fence value will be set to "fenceValue" from the GPU since the command
     // queue is being executed on the GPU
     hr = m_command_queue->Signal(m_fences[m_frame_index], m_fence_values[m_frame_index]);
-    if (!HRESULT_VALID(hr)) { return; }
+    if (!HRESULT_VALID(m_device, hr)) { return; }
 
     // present the current backbuffer
     hr = m_swapchain->Present(0, 0);
-    if (!HRESULT_VALID(hr)) { return; }
+
+    if (hr == DXGI_ERROR_DEVICE_HUNG)
+    {
+        HRESULT removal_reason = m_device->GetDeviceRemovedReason();
+        HRESULT_VALID(m_device, removal_reason);
+    }
+
+    if (!HRESULT_VALID(m_device, hr)) { return; }
 }
 
 bool c_renderer_dx12::wait_for_previous_frame()
@@ -1307,7 +1358,7 @@ bool c_renderer_dx12::wait_for_previous_frame()
     {
         // we have the fence create an event which is signaled once the fence's current value is "fenceValue"
         hr = m_fences[m_frame_index]->SetEventOnCompletion(m_fence_values[m_frame_index], m_fence_event);
-        if (!HRESULT_VALID(hr))
+        if (!HRESULT_VALID(m_device, hr))
         {
             wait_success = K_FAILURE;
         }
@@ -1315,6 +1366,10 @@ bool c_renderer_dx12::wait_for_previous_frame()
         // We will wait until the fence has triggered the event that it's current value has reached "fenceValue". once it's value
         // has reached "fenceValue", we know the command queue has finished executing
         WaitForSingleObject(m_fence_event, INFINITE);
+
+#if defined(_DEBUG)
+        NvAPI_D3D12_FlushRaytracingValidationMessages(m_device);
+#endif
     }
 
     // increment fenceValue for next frame

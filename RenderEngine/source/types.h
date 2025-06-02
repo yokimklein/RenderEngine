@@ -62,6 +62,8 @@ constexpr dword MAXIMUM_PATH = 260;
 	//#define IN_RANGE_INCLUSIVE(value, min, max) ((value) >= (min) && (value) <= (max))
 #define IN_RANGE_BOUNDS(bounds, min, max) (bounds.values[0] >= min && bounds.values[1] <= max)
 
+#define ALIGN(size, alignment) (size + alignment - 1) & ~(alignment - 1)
+
 // this class provides an interface for setting bits via an enum with a specified storage size (t_storage_type)
 template <typename t_flags, typename t_storage_type, t_flags k_maximum_count>
 class c_flags
@@ -701,14 +703,26 @@ struct simple_vertex
 struct vertex_part
 {
 	vector3d position;
+	//dword : 32;
+	// ==16 byte alignment==
 	vector3d normal;
+	//dword : 32;
+	// ==16 byte alignment==
 	point2d tex_coord;
+	//dword : 32;
+	//dword : 32;
+	// ==16 byte alignment==
 };
 
 // standard vertex type used in rendering
 struct vertex
 {
 	vertex_part vertex;
+	// ==16 byte alignment==
 	vector3d tangent;
+	//dword : 32;
+	// ==16 byte alignment==
 	vector3d bitangent;
+	//dword : 32;
+	// ==16 byte alignment==
 };

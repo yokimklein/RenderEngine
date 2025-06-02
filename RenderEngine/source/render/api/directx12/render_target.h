@@ -50,7 +50,7 @@ class c_shader;
 class c_render_target
 {
 public:
-	c_render_target(ID3D12Device* const device, c_shader_input* const shader_input, const e_render_targets target_type);
+	c_render_target(ID3D12Device5* const device, c_shader_input* const shader_input, const e_render_targets target_type);
 	~c_render_target();
 
 	void begin_render(ID3D12GraphicsCommandList* const command_list, const dword frame_index, const bool clear_buffers = true);
@@ -65,7 +65,7 @@ public:
 private:
 	c_packed_enum<e_render_targets, dword, _render_target_deferred, k_render_target_count> m_target_type;
 
-	ID3D12Device* const m_device; // local reference, DO NOT clean this up!
+	ID3D12Device5* const m_device; // local reference, DO NOT clean this up!
 
 	c_descriptor_heap* m_render_target_view_heap; // Render Target View (RTV) Heap, this is where the render target/back buffers are stored
 	ID3D12Resource** m_render_target_buffers; // Render target resources in the RTV heap (These are our back buffer textures), this is an array
