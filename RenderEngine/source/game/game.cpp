@@ -245,13 +245,6 @@ void main_init()
             albedo_texture = new c_render_texture(g_renderer, diff_texture_path, _texture_albedo);
             texture_count++;
         }
-        if (sponza_material_texture_names[i][1] != "")
-        {
-            wchar_t norm_texture_path[MAX_PATH] = {};
-            swprintf_s(norm_texture_path, MAX_PATH, L"assets\\textures\\sponza_pbr\\%hs.dds", sponza_material_texture_names[i][1]);
-            normal_texture = new c_render_texture(g_renderer, norm_texture_path, _texture_normal);
-            texture_count++;
-        }
         if (sponza_material_texture_names[i][2] != "")
         {
             wchar_t roughness_texture_path[MAX_PATH] = {};
@@ -266,6 +259,13 @@ void main_init()
             metallic_texture = new c_render_texture(g_renderer, metallic_texture_path, _texture_metallic);
             texture_count++;
         }
+        if (sponza_material_texture_names[i][1] != "")
+        {
+            wchar_t norm_texture_path[MAX_PATH] = {};
+            swprintf_s(norm_texture_path, MAX_PATH, L"assets\\textures\\sponza_pbr\\%hs.dds", sponza_material_texture_names[i][1]);
+            normal_texture = new c_render_texture(g_renderer, norm_texture_path, _texture_normal);
+            texture_count++;
+        }
 
         sponza_materials[i] = new c_material(g_renderer, texture_count);
 
@@ -273,11 +273,6 @@ void main_init()
         {
             sponza_materials[i]->assign_texture(albedo_texture);
             sponza_materials[i]->m_properties.m_use_albedo_texture = true;
-        }
-        if (normal_texture != nullptr)
-        {
-            sponza_materials[i]->assign_texture(normal_texture);
-            sponza_materials[i]->m_properties.m_use_normal_texture = true;
         }
         if (roughness_texture != nullptr)
         {
@@ -288,6 +283,11 @@ void main_init()
         {
             sponza_materials[i]->assign_texture(metallic_texture);
             sponza_materials[i]->m_properties.m_use_metallic_texture = true;
+        }
+        if (normal_texture != nullptr)
+        {
+            sponza_materials[i]->assign_texture(normal_texture);
+            sponza_materials[i]->m_properties.m_use_normal_texture = true;
         }
     }
 

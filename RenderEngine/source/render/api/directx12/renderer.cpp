@@ -54,6 +54,7 @@ bool c_renderer_dx12::initialise_factory()
     return K_SUCCESS;
 }
 
+#if defined(ENABLE_NVAPI_RAYTRACING_VALIDATION)
 // Validation callback
 static void __stdcall validation_message_callback(void* user_data, NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY severity, const char* message_code, const char* message, const char* message_details)
 {
@@ -67,6 +68,7 @@ static void __stdcall validation_message_callback(void* user_data, NVAPI_D3D12_R
             break;
     }
 }
+#endif
 
 // Get the first available highest performance hardware adapter that supports DX12
 bool c_renderer_dx12::initialise_device_adapter()
@@ -114,7 +116,7 @@ bool c_renderer_dx12::initialise_device_adapter()
         return K_FAILURE;
     }
 
-#if defined(_DEBUG)
+#if defined(ENABLE_NVAPI_RAYTRACING_VALIDATION)
     if (NvAPI_Initialize() != NVAPI_OK)
     {
         LOG_ERROR("NvAPI failed to initialise!");
@@ -1370,7 +1372,7 @@ bool c_renderer_dx12::wait_for_previous_frame()
         // has reached "fenceValue", we know the command queue has finished executing
         WaitForSingleObject(m_fence_event, INFINITE);
 
-#if defined(_DEBUG)
+#if defined(ENABLE_NVAPI_RAYTRACING_VALIDATION)
         NvAPI_D3D12_FlushRaytracingValidationMessages(m_device);
 #endif
     }

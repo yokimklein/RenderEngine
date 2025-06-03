@@ -20,7 +20,7 @@ bool c_renderer_dx12::initialise_raytracing_pipeline()
     // FRAME2: Output UAV, Top level AS, Camera CB
     // Textures
     // $TODO: clean this up on destruction
-    m_srv_uav_heap = new DescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, FRAME_BUFFER_COUNT * 3 + (/*k_default_textures_count * */MAXIMUM_TEXTURE_SETS));
+    m_srv_uav_heap = new DescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, FRAME_BUFFER_COUNT * 3 + (k_default_textures_count * MAXIMUM_TEXTURE_SETS));
 
     return K_SUCCESS;
 }
@@ -286,7 +286,7 @@ ID3D12RootSignature* c_renderer_dx12::create_hit_signature()
     root_parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     // Textures
     D3D12_ROOT_DESCRIPTOR_TABLE descriptor_table;
-    CD3DX12_DESCRIPTOR_RANGE texture_ranges[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, /*k_default_textures_count * */MAXIMUM_TEXTURE_SETS, 2 /*t2*/, 1 /*space1*/}};
+    CD3DX12_DESCRIPTOR_RANGE texture_ranges[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_default_textures_count/* * MAXIMUM_TEXTURE_SETS*/, 2 /*t2*/, 1 /*space1*/}};
     descriptor_table.NumDescriptorRanges = _countof(texture_ranges); // we only have one range
     descriptor_table.pDescriptorRanges = texture_ranges; // the pointer to the beginning of our ranges array
     root_parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -506,37 +506,17 @@ void c_renderer_dx12::update_shader_resource_heap(c_scene* const scene)
     std::vector<c_scene_object*> objects = *scene->get_objects();
     for (dword object_index = 0; object_index < objects.size(); object_index++)
     {
-        c_render_texture* const albedo_texture = objects[object_index]->get_material()->get_texture(_texture_albedo);
-        CreateShaderResourceView
-        (
-            m_device,
-            (ID3D12Resource*)albedo_texture->get_resources()->resource,
-            m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + object_index)
-        );
-
-        //c_render_texture* const normal_texture = objects[object_index]->get_material()->get_texture(_texture_normal);
-        //CreateShaderResourceView
-        //(
-        //    m_device,
-        //    (ID3D12Resource*)normal_texture->get_resources()->resource,
-        //    m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 1)
-        //);
-        //
-        //c_render_texture* const roughness_texture = objects[object_index]->get_material()->get_texture(_texture_roughness);
-        //CreateShaderResourceView
-        //(
-        //    m_device,
-        //    (ID3D12Resource*)roughness_texture->get_resources()->resource,
-        //    m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 2)
-        //);
-        //
-        //c_render_texture* const metallic_texture = objects[object_index]->get_material()->get_texture(_texture_metallic);
-        //CreateShaderResourceView
-        //(
-        //    m_device,
-        //    (ID3D12Resource*)metallic_texture->get_resources()->resource,
-        //    m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 3)
-        //);
+        dword descriptor_offset = object_index * k_default_textures_count;
+        for (dword texture_type = 0; texture_type < k_default_textures_count; texture_type++)
+        {
+            c_render_texture* const texture = objects[object_index]->get_material()->get_texture(texture_type);
+            CreateShaderResourceView
+            (
+                m_device,
+                (ID3D12Resource*)texture->get_resources()->resource,
+                m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + descriptor_offset + texture_type)
+            );
+        }
     }
 }
 
@@ -575,9 +555,9 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     m_miss_table_size = ALIGN(m_miss_entry_size * miss_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
     const dword hit_entries = scene->get_objects()->size();
-    m_hit_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + (sizeof(qword) * 3 /* + 3*/) /*The hit shader's descriptor table*/, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
-    //m_hit_table_size = ALIGN(m_hit_entry_size * hit_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
-    m_hit_table_size = m_hit_entry_size * hit_entries;
+    m_hit_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + (sizeof(qword) * 3) /*The hit shader's descriptor table*/, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+    m_hit_table_size = ALIGN(m_hit_entry_size * hit_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    //m_hit_table_size = m_hit_entry_size * hit_entries;
 
     qword shader_table_size = m_ray_gen_table_size + m_miss_table_size + m_hit_table_size;
     shader_table_size = ALIGN(shader_table_size, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT); // Not necessary to align? Just needs the buffer address to be 64 byte aligned
@@ -632,6 +612,7 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     std::vector<c_scene_object*> objects = *scene->get_objects();
     for (dword object_index = 0; object_index < objects.size(); object_index++)
     {
+        //qword data_size = data_offset;
         memcpy(data + data_offset, hit_identifier, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
         data_offset += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
@@ -644,7 +625,7 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
         data_offset += sizeof(qword);
 
         // textures $TODO: other textures
-        *(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index).ptr;
+        *(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index * k_default_textures_count).ptr;
         data_offset += sizeof(qword);
         //*(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 1).ptr;
         //data_offset += sizeof(qword);
@@ -655,6 +636,9 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
 
         // align up to m_hit_entry_size
         data_offset = ALIGN(data_offset, m_hit_entry_size);
+
+        //data_size = data_offset - data_size;
+        //LOG_MESSAGE("entry size: %d", data_size);
     }
 
     // Unmap
