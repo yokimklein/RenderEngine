@@ -195,7 +195,7 @@ private:
 	//ID3D12DescriptorHeap* m_sampler_heap;
 
 	nv_helpers_dx12::ShaderBindingTableGenerator m_sbt_helper;
-	ID3D12Resource* m_sbt_storage/*[FRAME_BUFFER_COUNT]*/; // TODO: buffer this again? there's screen tearing going on atm
+	ID3D12Resource* m_sbt_storage[FRAME_BUFFER_COUNT]; // TODO: buffer this again? there's screen tearing going on atm
 	qword m_ray_gen_table_size;
 	qword m_ray_gen_entry_size;
 	qword m_miss_table_size;

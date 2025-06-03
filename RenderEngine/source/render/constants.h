@@ -55,5 +55,5 @@ constexpr colour_rgba CLEAR_COLOUR = { 0.0f, 0.2f, 0.4f, 1.0f };
 constexpr dword MAX_LIGHTS = 10;
 // maximum preallocated groups of textures in a render target descriptor heap (m_shader_texture_heap)
 // max textures per group corresponds to max counts in e_texture_type
-// TODO: this isn't fantastic on memory and isn't dynamic, but its easy to implement for now
+// $TODO: this isn't fantastic on memory and isn't dynamic, but its easy to implement for now
 constexpr dword MAXIMUM_TEXTURE_SETS = 64;

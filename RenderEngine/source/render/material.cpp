@@ -50,6 +50,7 @@ void c_material::assign_texture(c_render_texture* const texture)
 	m_texture_count += 1;
 }
 
+// $TODO: index and texture type don't match up, yet plenty of the code base assumes they do - address this
 c_render_texture* const c_material::get_texture(const dword index) const
 {
 	const bool texture_type_invalid = !IN_RANGE_COUNT(index, 0, m_maximum_textures);

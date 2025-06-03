@@ -84,6 +84,7 @@
     <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
     <CopyFileAfterTargets>PostBuildEvent</CopyFileAfterTargets>
     <TargetName>$(Configuration)_$(Platform)</TargetName>
+    <OutDir>$(SolutionDir)$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|Win32'">
     <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
@@ -91,6 +92,7 @@
     <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
     <CopyFileAfterTargets>PostBuildEvent</CopyFileAfterTargets>
     <TargetName>$(Configuration)_$(Platform)</TargetName>
+    <OutDir>$(SolutionDir)$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|x64'">
     <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
@@ -98,6 +100,7 @@
     <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
     <CopyFileAfterTargets>PostBuildEvent</CopyFileAfterTargets>
     <TargetName>$(Configuration)_$(Platform)</TargetName>
+    <OutDir>$(SolutionDir)$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Release|x64'">
     <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
@@ -105,6 +108,7 @@
     <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
     <CopyFileAfterTargets>PostBuildEvent</CopyFileAfterTargets>
     <TargetName>$(Configuration)_$(Platform)</TargetName>
+    <OutDir>$(SolutionDir)$(Platform)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DX12_Debug|Win32'">
     <ClCompile>

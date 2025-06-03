@@ -43,6 +43,7 @@ bool c_renderer_dx12::initialise_factory()
     if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     m_dx12_debug->EnableDebugLayer();
     m_dx12_debug->SetEnableGPUBasedValidation(TRUE);
+    m_dx12_debug->SetEnableSynchronizedCommandQueueValidation(TRUE);
     
     dxgi_factory_flags = DXGI_CREATE_FACTORY_DEBUG;
 #endif
@@ -191,6 +192,8 @@ bool c_renderer_dx12::initialise_swapchain(const HWND hWnd)
 #ifdef PLATFORM_WINDOWS
     // For windows
     
+    // $TODO: Microsoft recommends against using factory->CreateSwapChain, try use CreateSwapChainForHwnd instead?
+    // https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/nf-dxgi1_2-idxgifactory2-createswapchainforhwnd
     IDXGISwapChain* temp_swapchain;
     m_factory->CreateSwapChain(m_command_queue, &swapchain_desc, &temp_swapchain);
     m_swapchain = static_cast<IDXGISwapChain3*>(temp_swapchain);

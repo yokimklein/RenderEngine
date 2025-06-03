@@ -53,20 +53,20 @@ void c_renderer_dx12::update_raytrace(c_scene* const scene)
 
     // The ray generation shaders are always at the beginning of the SBT. 
     //uint32_t rayGenerationSectionSizeInBytes = m_sbt_helper.GetRayGenSectionSize();
-    rays_desc.RayGenerationShaderRecord.StartAddress = m_sbt_storage->GetGPUVirtualAddress();
+    rays_desc.RayGenerationShaderRecord.StartAddress = m_sbt_storage[m_frame_index]->GetGPUVirtualAddress();
     rays_desc.RayGenerationShaderRecord.SizeInBytes = m_ray_gen_table_size; //rayGenerationSectionSizeInBytes;
 
     // The miss shaders are in the second SBT section, right after the ray generation shader.
     // We have one miss shader for the camera rays and one for the shadow rays, so this section has a size of 2*m_sbtEntrySize.
     // We also indicate the stride between the two miss shaders, which is the size of a SBT entry
     //uint32_t missSectionSizeInBytes = m_sbt_helper.GetMissSectionSize();
-    rays_desc.MissShaderTable.StartAddress = m_sbt_storage->GetGPUVirtualAddress() + m_ray_gen_table_size; // rayGenerationSectionSizeInBytes;
+    rays_desc.MissShaderTable.StartAddress = m_sbt_storage[m_frame_index]->GetGPUVirtualAddress() + m_ray_gen_table_size; // rayGenerationSectionSizeInBytes;
     rays_desc.MissShaderTable.SizeInBytes = m_miss_table_size; //missSectionSizeInBytes;
     rays_desc.MissShaderTable.StrideInBytes = m_miss_entry_size; //m_sbt_helper.GetMissEntrySize();
 
     // The hit groups section start after the miss shaders. In this sample we have one 1 hit group
     //uint32_t hitGroupsSectionSize = m_sbt_helper.GetHitGroupSectionSize();
-    rays_desc.HitGroupTable.StartAddress = m_sbt_storage->GetGPUVirtualAddress() + m_ray_gen_table_size + m_miss_table_size;// + rayGenerationSectionSizeInBytes + missSectionSizeInBytes;
+    rays_desc.HitGroupTable.StartAddress = m_sbt_storage[m_frame_index]->GetGPUVirtualAddress() + m_ray_gen_table_size + m_miss_table_size;// + rayGenerationSectionSizeInBytes + missSectionSizeInBytes;
     rays_desc.HitGroupTable.SizeInBytes = m_hit_table_size; //hitGroupsSectionSize;
     rays_desc.HitGroupTable.StrideInBytes = m_hit_entry_size; // m_sbt_helper.GetHitGroupEntrySize();
 
@@ -98,7 +98,6 @@ void c_renderer_dx12::update_raytrace(c_scene* const scene)
 //
 bool c_renderer_dx12::create_acceleration_structures(c_scene* const scene)
 {
-    // TODO: crashing on update with too much geometry
     // TODO: handle updates
     // TODO: design around calling reset & upload
 
@@ -201,13 +200,6 @@ bool c_renderer_dx12::create_acceleration_structures(c_scene* const scene)
     m_top_level_as_buffers.pInstanceDesc->Map(0, nullptr, (void**)&raytracing_instance_descs);
     ZeroMemory(raytracing_instance_descs, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * objects.size());
 
-    //D3D12_RAYTRACING_INSTANCE_DESC* raytracing_instance_descs = new D3D12_RAYTRACING_INSTANCE_DESC[objects.size()];
-    //memset(raytracing_instance_descs, 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * objects.size());
-    
-    //raytracing_instance_desc.InstanceID = 0;                            // This value will be exposed to the shader via InstanceID()
-    //raytracing_instance_desc.InstanceContributionToHitGroupIndex = 0;   // This is the offset inside the shader-table. We only have a single geometry, so the offset 0
-    //raytracing_instance_desc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
-
     for (dword object_index = 0; object_index < objects.size(); object_index++)
     {
         c_scene_object* object = objects[object_index];
@@ -223,9 +215,6 @@ bool c_renderer_dx12::create_acceleration_structures(c_scene* const scene)
         raytracing_instance_descs[object_index].InstanceMask = 0xFF;
     }
 
-    // The instance desc should be inside a buffer, create and map the buffer
-    //hr = CreateUploadBuffer(m_device, &raytracing_instance_descs, objects.size(), sizeof(D3D12_RAYTRACING_INSTANCE_DESC), &m_top_level_as_buffers.pInstanceDesc);
-    //if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     // Unmap
     m_top_level_as_buffers.pInstanceDesc->Unmap(0, nullptr);
 
@@ -295,9 +284,9 @@ ID3D12RootSignature* c_renderer_dx12::create_hit_signature()
     root_parameters[1].Descriptor.RegisterSpace = 0;
     root_parameters[1].Descriptor.ShaderRegister = 1; // t1
     root_parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-    // Albedo Textures
+    // Textures
     D3D12_ROOT_DESCRIPTOR_TABLE descriptor_table;
-    CD3DX12_DESCRIPTOR_RANGE texture_ranges[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, MAXIMUM_TEXTURE_SETS, 2 /*t2*/, 1 /*space1*/}};
+    CD3DX12_DESCRIPTOR_RANGE texture_ranges[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, /*k_default_textures_count * */MAXIMUM_TEXTURE_SETS, 2 /*t2*/, 1 /*space1*/}};
     descriptor_table.NumDescriptorRanges = _countof(texture_ranges); // we only have one range
     descriptor_table.pDescriptorRanges = texture_ranges; // the pointer to the beginning of our ranges array
     root_parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -350,19 +339,6 @@ ID3D12RootSignature* c_renderer_dx12::create_hit_signature()
         }
     }
     return nullptr;
-
-    //nv_helpers_dx12::RootSignatureGenerator rsc;
-    //// TODO: these have a maximum of 65k, which may be causing issues?
-    //rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices
-    //rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
-    //rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 2 /*t2*/); // textures
-    //
-    //rsc.AddHeapRangesParameter
-    //({
-    //    //{ 2 /*t2*/, 4, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0 },      // Albedo texture
-    //    { 0 /*s0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1 }   // Sampler
-    //});
-    //return rsc.Generate(m_device, true);
 }
 
 //-----------------------------------------------------------------------------
@@ -399,9 +375,6 @@ bool c_renderer_dx12::create_raytracing_pipeline()
     // Create the DXIL library
     //DxilLibrary dxilLib = createDxilLibrary();
     //subobjects[index++] = dxilLib.stateSubobject; // 0 Library
-
-
-
 
 
     nv_helpers_dx12::RayTracingPipelineGenerator pipeline(m_device);
@@ -516,9 +489,7 @@ void c_renderer_dx12::update_shader_resource_heap(c_scene* const scene)
     // Write the acceleration structure view in the heap
     m_device->CreateShaderResourceView(nullptr, &srvDesc, m_srv_uav_heap->GetCpuHandle((m_frame_index * 3) + 1));
 
-    // #DXR Extra: Perspective Camera
     // Add the constant buffer for the camera after the TLAS
-
     // Describe and create a constant buffer view for the camera
     D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
     // $TODO: decouple shader input & constant buffers
@@ -536,41 +507,37 @@ void c_renderer_dx12::update_shader_resource_heap(c_scene* const scene)
     for (dword object_index = 0; object_index < objects.size(); object_index++)
     {
         c_render_texture* const albedo_texture = objects[object_index]->get_material()->get_texture(_texture_albedo);
-        assert(albedo_texture);
         CreateShaderResourceView
         (
             m_device,
             (ID3D12Resource*)albedo_texture->get_resources()->resource,
             m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + object_index)
         );
-        
-        //CreateShaderResourceView(m_device, (ID3D12Resource*)objects[object_index]->get_material()->get_texture(_texture_roughness)->get_resources()->resource, srvHandle);
-        //CreateShaderResourceView(m_device, (ID3D12Resource*)objects[object_index]->get_material()->get_texture(_texture_metallic)->get_resources()->resource, srvHandle);
-        //CreateShaderResourceView(m_device, (ID3D12Resource*)objects[object_index]->get_material()->get_texture(_texture_normal)->get_resources()->resource, srvHandle);
+
+        //c_render_texture* const normal_texture = objects[object_index]->get_material()->get_texture(_texture_normal);
+        //CreateShaderResourceView
+        //(
+        //    m_device,
+        //    (ID3D12Resource*)normal_texture->get_resources()->resource,
+        //    m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 1)
+        //);
+        //
+        //c_render_texture* const roughness_texture = objects[object_index]->get_material()->get_texture(_texture_roughness);
+        //CreateShaderResourceView
+        //(
+        //    m_device,
+        //    (ID3D12Resource*)roughness_texture->get_resources()->resource,
+        //    m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 2)
+        //);
+        //
+        //c_render_texture* const metallic_texture = objects[object_index]->get_material()->get_texture(_texture_metallic);
+        //CreateShaderResourceView
+        //(
+        //    m_device,
+        //    (ID3D12Resource*)metallic_texture->get_resources()->resource,
+        //    m_srv_uav_heap->GetCpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 3)
+        //);
     }
-
-
-    // FOR EACH OBJECT
-    //std::vector<c_scene_object*> objects = *scene->get_objects();
-    //for (dword object_index = 0; object_index < /*objects.size()*/1; object_index++)
-    //{
-    //    CD3DX12_CPU_DESCRIPTOR_HANDLE descriptor_handle(m_srv_uav_heap->GetCPUDescriptorHandleForHeapStart(), object_index, increment_size);
-    //    CreateShaderResourceView(m_device, (ID3D12Resource*)objects[object_index]->get_material()->get_texture(0)->get_resources()->resource, descriptor_handle);
-    //
-    //    CD3DX12_GPU_DESCRIPTOR_HANDLE texHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(m_srv_uav_heap->GetGPUDescriptorHandleForHeapStart(), object_index, increment_size);
-    //    m_texture_handles.push_back(texHandle);
-    //
-    //    srvHandle.ptr += increment_size;
-    //}
-    
-    //D3D12_SAMPLER_DESC samplerDesc = {};
-    //samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    //samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    //samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    //samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    //
-    //CD3DX12_CPU_DESCRIPTOR_HANDLE samplerHandle(m_sampler_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER));
-    //m_device->CreateSampler(&samplerDesc, samplerHandle);
 }
 
 //-----------------------------------------------------------------------------
@@ -608,26 +575,30 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     m_miss_table_size = ALIGN(m_miss_entry_size * miss_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
     const dword hit_entries = scene->get_objects()->size();
-    m_hit_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + (sizeof(qword) * 3) /*The hit shader's descriptor table*/, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
-    m_hit_table_size = ALIGN(m_hit_entry_size * hit_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    m_hit_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + (sizeof(qword) * 3 /* + 3*/) /*The hit shader's descriptor table*/, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+    //m_hit_table_size = ALIGN(m_hit_entry_size * hit_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    m_hit_table_size = m_hit_entry_size * hit_entries;
 
     qword shader_table_size = m_ray_gen_table_size + m_miss_table_size + m_hit_table_size;
     shader_table_size = ALIGN(shader_table_size, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT); // Not necessary to align? Just needs the buffer address to be 64 byte aligned
 
     if (!update_only)
     {
-        hr = CreateUploadBuffer(m_device, nullptr, 1, shader_table_size, &m_sbt_storage);
-        if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
-        if (!m_sbt_storage)
+        for (dword i = 0; i < FRAME_BUFFER_COUNT; i++)
         {
-            LOG_ERROR("Could not allocate the shader binding table!");
-            return K_FAILURE;
+            hr = CreateUploadBuffer(m_device, nullptr, 1, shader_table_size, &m_sbt_storage[i]);
+            if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
+            if (!m_sbt_storage[i])
+            {
+                LOG_ERROR("Could not allocate the shader binding table!");
+                return K_FAILURE;
+            }
         }
     }
 
     ubyte* data;
     qword data_offset = 0;
-    hr = m_sbt_storage->Map(0, nullptr, (void**)&data);
+    hr = m_sbt_storage[m_frame_index]->Map(0, nullptr, (void**)&data);
     if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     hr = m_rt_state_object->QueryInterface(IID_PPV_ARGS(&m_rt_state_object_props));
@@ -672,75 +643,23 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
         *(qword*)(data + data_offset) = index_buffer;
         data_offset += sizeof(qword);
 
-        // textures
+        // textures $TODO: other textures
         *(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index).ptr;
         data_offset += sizeof(qword);
+        //*(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 1).ptr;
+        //data_offset += sizeof(qword);
+        //*(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 2).ptr;
+        //data_offset += sizeof(qword);
+        //*(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 3).ptr;
+        //data_offset += sizeof(qword);
 
         // align up to m_hit_entry_size
         data_offset = ALIGN(data_offset, m_hit_entry_size);
     }
 
     // Unmap
-    m_sbt_storage->Unmap(0, nullptr);
-    
+    m_sbt_storage[m_frame_index]->Unmap(0, nullptr);
 
-
-    /*
-    // The SBT helper class collects calls to Add*Program.  If called several
-    // times, the helper must be emptied before re-adding shaders.
-    m_sbt_helper.Reset();
-
-    // The pointer to the beginning of the heap is the only parameter required by
-    // shaders without root parameters
-    const dword increment_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-    CD3DX12_GPU_DESCRIPTOR_HANDLE srvUavHeapHandle(m_srv_uav_heap->Heap()->GetGPUDescriptorHandleForHeapStart(), m_frame_index * 3, increment_size);
-
-    // The helper treats both root parameter pointers and heap pointers as void*,
-    // while DX12 uses the
-    // D3D12_GPU_DESCRIPTOR_HANDLE to define heap pointers. The pointer in this
-    // struct is a UINT64, which then has to be reinterpreted as a pointer.
-    auto heapPointer = reinterpret_cast<void*>(srvUavHeapHandle.ptr);
-
-    // The ray generation only uses heap data
-    m_sbt_helper.AddRayGenerationProgram(L"ray_gen", { heapPointer });
-
-    // The miss and hit shaders do not access any external resources: instead they
-    // communicate their results through the ray payload
-    m_sbt_helper.AddMissProgram(L"miss", {});
-
-    // Adding the triangle hit shader
-    std::vector<c_scene_object*> objects = *scene->get_objects();
-    // Offset descriptor heap to texture table
-    srvUavHeapHandle.InitOffsetted(m_srv_uav_heap->Heap()->GetGPUDescriptorHandleForHeapStart(), FRAME_BUFFER_COUNT * 3, increment_size);
-    for (dword object_index = 0; object_index < objects.size(); object_index++)
-    {
-        std::vector<void*> geometry_data;
-
-        geometry_data.push_back((void*)objects[object_index]->get_model()->get_resources()->vertex_buffer->GetGPUVirtualAddress());
-        geometry_data.push_back((void*)objects[object_index]->get_model()->get_resources()->index_buffer->GetGPUVirtualAddress());
-        geometry_data.push_back((void*)srvUavHeapHandle.ptr); // texture table
-
-        m_sbt_helper.AddHitGroup(L"hit_group", geometry_data);
-    }
-
-    // Compute the size of the SBT given the number of shaders and their parameters
-    uint32_t sbt_size = m_sbt_helper.ComputeSBTSize();
-
-    // Create the SBT on the upload heap. This is required as the helper will use
-    // mapping to write the SBT contents. After the SBT compilation it could be
-    // copied to the default heap for performance.
-    if (!update_only)
-    {
-        m_sbt_storage = nv_helpers_dx12::CreateBuffer(m_device, sbt_size, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
-        if (!m_sbt_storage)
-        {
-            LOG_ERROR("Could not allocate the shader binding table!");
-            return K_FAILURE;
-        }
-    }
-    // Compile the SBT from the shader and parameters info
-    m_sbt_helper.Generate(m_sbt_storage, m_rt_state_object_props);
-    */
     return K_SUCCESS;
 }
 
