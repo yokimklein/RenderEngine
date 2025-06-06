@@ -6,7 +6,7 @@ c_renderer::c_renderer()
 	: m_object_cb()
 	, m_material_properties_cb()
 	, m_light_properties_cb()
-	, m_raster(true)
+	, m_raster(false)
 {
 }
 

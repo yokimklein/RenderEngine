@@ -6,8 +6,18 @@
 #include <ImGuizmo.h>
 #include <time/time.h>
 
+static bool g_imgui_enabled = true;
+
 void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword fps_counter)
 {
+    if (GetAsyncKeyState(VK_MENU) & 0x0001)
+    {
+        g_imgui_enabled = !g_imgui_enabled;
+    }
+
+    if (!g_imgui_enabled)
+        return;
+
     //ImGui::ShowDemoWindow();
 
     bool open = true;
@@ -55,6 +65,11 @@ void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword
             }
             if (ImGui::BeginTabItem("Scene Objects"))
             {
+                point3d camera_pos = scene->m_camera->get_position();
+                ImGui::SliderFloat3("Camera Position", camera_pos.values, -100.0f, 100.0f);
+                point3d camera_dir = scene->m_camera->get_look_direction();
+                ImGui::SliderFloat3("Camera Direction", camera_dir.values, -100.0f, 100.0f);
+
                 dword object_index = 0;
                 for (c_scene_object* const object : *scene->get_objects())
                 {
@@ -103,6 +118,11 @@ void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword
             {
                 lights_open = true;
                 ImGui::SliderFloat3("Ambient Light", scene->m_ambient_light.values, 0.0f, 1.0f);
+                if (ImGui::SliderFloat("Ambient Light", &scene->m_ambient_light.values[0], 0.0f, 1.0f))
+                {
+                    scene->m_ambient_light.g = scene->m_ambient_light.r;
+                    scene->m_ambient_light.b = scene->m_ambient_light.r;
+                }
                 for (dword i = 0; i < MAXIMUM_SCENE_LIGHTS; i++)
                 {
                     s_light* light = &scene->m_lights[i];

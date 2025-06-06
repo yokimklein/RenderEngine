@@ -1,5 +1,5 @@
 // Maths
-static const float EPSILON = 0.0001f;
+static const float EPSILON = 0.001f; // or 0.001f?
 static const float PI = 3.141529f;
 
 // Transform vector from tangent space to world space.

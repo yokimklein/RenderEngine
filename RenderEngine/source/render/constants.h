@@ -50,7 +50,7 @@ void update_render_globals();
 
 constexpr wchar_t WINDOW_CLASS_NAME[] = L"Render Engine";
 constexpr wchar_t WINDOW_TITLE[] = L"Render Engine";
-constexpr dword FRAME_BUFFER_COUNT = 2; // Triple buffering
+constexpr dword FRAME_BUFFER_COUNT = 3; // Triple buffering
 constexpr colour_rgba CLEAR_COLOUR = { 0.0f, 0.2f, 0.4f, 1.0f };
 constexpr dword MAX_LIGHTS = 10;
 // maximum preallocated groups of textures in a render target descriptor heap (m_shader_texture_heap)

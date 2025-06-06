@@ -41,6 +41,8 @@ public:
 	D3D12_GPU_VIRTUAL_ADDRESS get_gpu_address(const dword frame_index, const dword buffer_index);
 
 	const dword get_buffer_size() const { return m_buffer_aligned_size; };
+	const dword get_buffer_struct_size() const { return m_buffer_struct_size; };
+	const ubyte* const get_buffer_data(const dword frame_index, const dword sub_index) const { return m_gpu_address[frame_index] + (m_buffer_aligned_size * sub_index); };
 
 private:
 	const dword m_buffer_struct_size;

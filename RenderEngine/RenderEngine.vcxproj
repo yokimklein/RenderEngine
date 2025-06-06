@@ -184,7 +184,7 @@ echo call "$(ProjectDir)tools\copy_assets_to_build.bat" "$(ProjectDir)assets_com
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;PLATFORM_WINDOWS;%(PreprocessorDefinitions);API_DX12;ENABLE_NVAPI_RAYTRACING_VALIDATION</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)third_party\directx12\;$(ProjectDir)source\;$(ProjectDir)third_party\DirectXMesh-oct2024\DirectXMesh;$(ProjectDir)third_party\DirectXTK12-oct2024\Inc;$(ProjectDir)third_party\imgui-1.91.6;$(ProjectDir)third_party\ImGuizmo;$(ProjectDir)third_party\DXRHelpers;$(ProjectDir)third_party\nvapi</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>

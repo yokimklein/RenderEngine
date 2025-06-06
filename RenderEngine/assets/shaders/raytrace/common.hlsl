@@ -14,3 +14,8 @@ struct attributes
 {
     float2 bary;
 };
+
+struct shadow_ray_payload
+{
+    bool is_hit;
+};

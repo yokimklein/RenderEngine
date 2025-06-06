@@ -1,5 +1,8 @@
 #include "common.hlsl"
 
+// $TODO - jitter rays
+#define SAMPLES_PER_PIXEL 4
+
 // Raytracing output texture, accessed as a UAV
 RWTexture2D<float4> g_output : register(u0);
 
@@ -20,18 +23,11 @@ cbuffer object_cb : register(b0)
 [shader("raygeneration")] 
 void ray_gen()
 {
-	// Initialize the ray payload
-	hit_info payload;
-	payload.color_and_distance = float4(0, 0, 0, 0);
-	
 	// Get the location within the dispatched 2D grid of work items
 	// (often maps to pixels, so this could represent a pixel coordinate).
     uint2 launchIndex = DispatchRaysIndex().xy;
-    float2 dims = float2(DispatchRaysDimensions().xy);
-    float2 d = (((launchIndex.xy + 0.5f) / dims.xy) * 2.f - 1.f);
-	
-	// Define a ray, consisting of origin, direction, and the min-max distance values
-    RayDesc ray;
+    float2 dims = DispatchRaysDimensions().xy;
+    //float2 d = (((launchIndex.xy + 0.5f) / dims.xy) * 2.f - 1.f);
 	
     float2 xy = DispatchRaysIndex().xy + 0.5f; // center in the middle of the pixel.
     float2 screenPos = xy / DispatchRaysDimensions().xy * 2.0 - 1.0;
@@ -45,6 +41,15 @@ void ray_gen()
     float3 worldSpacePosition = mul(float4(viewSpacePosition.xyz, 1.0), view_inverse).xyz;
     float3 cameraPosition = mul(float4(0, 0, 0, 1), view_inverse).xyz;
     float3 rayDirection = normalize(worldSpacePosition - cameraPosition);
+	
+    float3 colour = float3(0.0f, 0.0f, 0.0f);
+	
+	// Initialize the ray payload
+	hit_info payload;
+	payload.color_and_distance = float4(0, 0, 0, 0);
+	
+	// Define a ray, consisting of origin, direction, and the min-max distance values
+    RayDesc ray;
 	
     ray.Origin = cameraPosition;
     ray.Direction = rayDirection;
@@ -101,6 +106,9 @@ void ray_gen()
 		// shaders and the raygen
 		payload
 	);
+    colour += payload.color_and_distance.rgb;
+	// end loop
 	
-    g_output[launchIndex] = float4(payload.color_and_distance.rgb, 1.f);
+    //colour /= SAMPLES_PER_PIXEL;
+    g_output[launchIndex] = float4(colour, 1.0f);
 }

@@ -205,7 +205,8 @@ bool c_renderer_dx12::create_acceleration_structures(c_scene* const scene)
         c_scene_object* object = objects[object_index];
 
         raytracing_instance_descs[object_index].InstanceID = object_index;
-        raytracing_instance_descs[object_index].InstanceContributionToHitGroupIndex = object_index; // Used to properly index into the hit group's shader table
+        // Used to properly index into the hit group's shader table
+        raytracing_instance_descs[object_index].InstanceContributionToHitGroupIndex = 1 + object_index;
         raytracing_instance_descs[object_index].Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
         matrix4x4 object_matrix = objects[object_index]->m_transform.build_matrix();
         XMMATRIX xm_matrix = XMLoadFloat4x4((XMFLOAT4X4*)&object_matrix);
@@ -272,7 +273,7 @@ ID3D12RootSignature* c_renderer_dx12::create_hit_signature()
 {
     ID3D12RootSignature* root_signature;
 
-    D3D12_ROOT_PARAMETER root_parameters[3] = {};
+    D3D12_ROOT_PARAMETER root_parameters[5] = {};
 
     // Vertices
     root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
@@ -284,14 +285,27 @@ ID3D12RootSignature* c_renderer_dx12::create_hit_signature()
     root_parameters[1].Descriptor.RegisterSpace = 0;
     root_parameters[1].Descriptor.ShaderRegister = 1; // t1
     root_parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-    // Textures
-    D3D12_ROOT_DESCRIPTOR_TABLE descriptor_table;
-    CD3DX12_DESCRIPTOR_RANGE texture_ranges[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_default_textures_count/* * MAXIMUM_TEXTURE_SETS*/, 2 /*t2*/, 1 /*space1*/}};
-    descriptor_table.NumDescriptorRanges = _countof(texture_ranges); // we only have one range
-    descriptor_table.pDescriptorRanges = texture_ranges; // the pointer to the beginning of our ranges array
-    root_parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    root_parameters[2].DescriptorTable = descriptor_table;
+    // Lights
+    root_parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    root_parameters[2].Descriptor.RegisterSpace = 0;
+    root_parameters[2].Descriptor.ShaderRegister = 0; // b0
     root_parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    // Textures
+    D3D12_ROOT_DESCRIPTOR_TABLE texture_descriptor_table;
+    CD3DX12_DESCRIPTOR_RANGE texture_ranges[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_default_textures_count/* * MAXIMUM_TEXTURE_SETS*/, 2 /*t2*/, 0 /*space0*/}};
+    texture_descriptor_table.NumDescriptorRanges = _countof(texture_ranges); // we only have one range
+    texture_descriptor_table.pDescriptorRanges = texture_ranges; // the pointer to the beginning of our ranges array
+    root_parameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    root_parameters[3].DescriptorTable = texture_descriptor_table;
+    root_parameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    // TLAS
+    D3D12_ROOT_DESCRIPTOR_TABLE tlas_descriptor_table;
+    CD3DX12_DESCRIPTOR_RANGE tlas_range[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2 + k_default_textures_count /*t6~*/, 0 /*space0*/} };
+    tlas_descriptor_table.NumDescriptorRanges = _countof(tlas_range);
+    tlas_descriptor_table.pDescriptorRanges = tlas_range;
+    root_parameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    root_parameters[4].DescriptorTable = tlas_descriptor_table;
+    root_parameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
     // create a static sampler
     CD3DX12_STATIC_SAMPLER_DESC samplers[1] =
@@ -303,7 +317,7 @@ ID3D12RootSignature* c_renderer_dx12::create_hit_signature()
             D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             0.0f, // mip LOD bias
-            0, // max anisotropy
+            8, // max anisotropy
             D3D12_COMPARISON_FUNC_NEVER,
             D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
             0.0f, // min LOD
@@ -394,8 +408,8 @@ bool c_renderer_dx12::create_raytracing_pipeline()
     // can contain an arbitrary number of symbols, whose semantic is given in HLSL
     // using the [shader("xxx")] syntax
     pipeline.AddLibrary(m_ray_gen_library, { L"ray_gen" });
-    pipeline.AddLibrary(m_miss_library, { L"miss" });
-    pipeline.AddLibrary(m_hit_library, { L"closest_hit" });
+    pipeline.AddLibrary(m_miss_library, { L"miss", L"shadow_ray_miss" });
+    pipeline.AddLibrary(m_hit_library, { L"closest_hit", L"shadow_ray_hit" });
 
     // To be used, each DX12 shader needs a root signature defining which
     // parameters and buffers will be accessed.
@@ -421,6 +435,7 @@ bool c_renderer_dx12::create_raytracing_pipeline()
     // Hit group for the triangles, with a shader simply interpolating vertex
     // colors
     pipeline.AddHitGroup(L"hit_group", L"closest_hit");
+    pipeline.AddHitGroup(L"shadow_ray_hit_group", L"", L"shadow_ray_hit");
 
     // The following section associates the root signature to each shader. Note
     // that we can explicitly show that some shaders share the same root signature
@@ -428,8 +443,10 @@ bool c_renderer_dx12::create_raytracing_pipeline()
     // to as hit groups, meaning that the underlying intersection, any-hit and
     // closest-hit shaders share the same root signature.
     pipeline.AddRootSignatureAssociation(m_ray_gen_signature, {L"ray_gen"});
-    pipeline.AddRootSignatureAssociation(m_miss_signature, {L"miss"});
+    pipeline.AddRootSignatureAssociation(m_miss_signature, {L"miss", L"shadow_ray_miss", L"shadow_ray_hit_group" });
     pipeline.AddRootSignatureAssociation(m_hit_signature, {L"hit_group"});
+    //pipeline.AddRootSignatureAssociation(m_miss_signature, {L"shadow_ray_miss"}); // reusing miss signature here as these have no inputs
+    //pipeline.AddRootSignatureAssociation(m_miss_signature, {L"shadow_ray_hit_group"});
 
     // The payload size defines the maximum size of the data carried by the rays,
     // ie. the the data
@@ -449,7 +466,7 @@ bool c_renderer_dx12::create_raytracing_pipeline()
     // then requires a trace depth of 1. Note that this recursion depth should be
     // kept to a minimum for best performance. Path tracing algorithms can be
     // easily flattened into a simple loop in the ray generation.
-    pipeline.SetMaxRecursionDepth(1);
+    pipeline.SetMaxRecursionDepth(2); // $TODO: increase for shadow rays?
 
     // Compile the pipeline for execution on the GPU
     m_rt_state_object = pipeline.Generate();
@@ -536,7 +553,9 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     /** The shader-table layout is as follows:
     Entry 0 - Ray-gen program
     Entry 1 - Miss program
-    Entry 2 - Hit program
+    Entry 2 - Shadow ray miss program
+    Entry 3 - Shadow ray hit program
+    Entry 4 + each object - Hit program
     All entries in the shader-table must have the same size, so we will choose it base on the largest required entry.
     The ray-gen program requires the largest entry - sizeof(program identifier) + 8 bytes for a descriptor-table.
     The entry size must be aligned up to D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT
@@ -550,14 +569,20 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     m_ray_gen_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + (sizeof(qword) * 3)/*The ray-gen's descriptor table*/, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
     m_ray_gen_table_size = ALIGN(m_ray_gen_entry_size * ray_gen_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
+    m_main_miss_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+    m_shadow_ray_miss_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+    m_miss_entry_size = ALIGN(max(m_main_miss_entry_size, m_shadow_ray_miss_entry_size), D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
     constexpr dword miss_entries = 1;
-    m_miss_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
-    m_miss_table_size = ALIGN(m_miss_entry_size * miss_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    constexpr dword shadow_miss_entries = 1;
+    m_miss_table_size = m_miss_entry_size * (miss_entries + shadow_miss_entries);
 
-    const dword hit_entries = scene->get_objects()->size();
-    m_hit_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + (sizeof(qword) * 3) /*The hit shader's descriptor table*/, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
-    m_hit_table_size = ALIGN(m_hit_entry_size * hit_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
-    //m_hit_table_size = m_hit_entry_size * hit_entries;
+    m_shadow_ray_hit_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+    m_main_hit_entry_size = ALIGN(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + (sizeof(qword) * 5) /*The hit shader's descriptor table*/, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+    // Use the biggest hit group size and stride
+    m_hit_entry_size = ALIGN(max(m_main_hit_entry_size, m_shadow_ray_hit_entry_size), D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+    constexpr dword shadow_hit_entries = 1;
+    const dword hit_entries = scene->get_objects()->size() + shadow_hit_entries;
+    m_hit_table_size = m_hit_entry_size * hit_entries;//ALIGN(m_hit_entry_size * hit_entries, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
     qword shader_table_size = m_ray_gen_table_size + m_miss_table_size + m_hit_table_size;
     shader_table_size = ALIGN(shader_table_size, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT); // Not necessary to align? Just needs the buffer address to be 64 byte aligned
@@ -584,6 +609,8 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     hr = m_rt_state_object->QueryInterface(IID_PPV_ARGS(&m_rt_state_object_props));
     if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
+    // zero memory
+    memset(data, 0, shader_table_size);
 
     // Entry 0 - ray-gen program ID and descriptor data
     void* raygen_identifier = m_rt_state_object_props->GetShaderIdentifier(L"ray_gen");
@@ -602,43 +629,65 @@ bool c_renderer_dx12::create_shader_binding_table(c_scene* const scene, bool upd
     void* miss_identifier = m_rt_state_object_props->GetShaderIdentifier(L"miss");
     assert(miss_identifier);
     memcpy(data + data_offset, miss_identifier, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    data_offset += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    data_offset += m_miss_entry_size;
+    //data_offset = m_ray_gen_table_size + m_miss_table_size;
+    // Entry 2 - shadow ray miss program
+    void* shadow_ray_miss_identifier = m_rt_state_object_props->GetShaderIdentifier(L"shadow_ray_miss");
+    assert(shadow_ray_miss_identifier);
+    memcpy(data + data_offset, shadow_ray_miss_identifier, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    //data_offset += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     data_offset = m_ray_gen_table_size + m_miss_table_size;
 
-    // Entry 2 - hit program
+    // Entry 3 - shadow ray hit program
+    void* shadow_ray_hit_identifier = m_rt_state_object_props->GetShaderIdentifier(L"shadow_ray_hit_group");
+    assert(shadow_ray_hit_identifier);
+    memcpy(data + data_offset, shadow_ray_hit_identifier, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    data_offset += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    // zero out remaining root arg space
+    memset(data + data_offset, 0, m_hit_entry_size - D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    data_offset += m_hit_entry_size - D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    // align up to m_hit_entry_size
+    //data_offset = ALIGN(data_offset, m_hit_entry_size);
+
+    // Entry 4 - main hit program
     void* hit_identifier = m_rt_state_object_props->GetShaderIdentifier(L"hit_group");
     assert(hit_identifier);
-
     std::vector<c_scene_object*> objects = *scene->get_objects();
     for (dword object_index = 0; object_index < objects.size(); object_index++)
     {
-        //qword data_size = data_offset;
+        qword offset_start = data_offset;
+        // Identifier
         memcpy(data + data_offset, hit_identifier, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
         data_offset += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
+        // Vertex buffer
         qword vertex_buffer = objects[object_index]->get_model()->get_resources()->vertex_buffer->GetGPUVirtualAddress();
         *(qword*)(data + data_offset) = vertex_buffer;
         data_offset += sizeof(qword);
         
+        // Index buffer
         qword index_buffer = objects[object_index]->get_model()->get_resources()->index_buffer->GetGPUVirtualAddress();
         *(qword*)(data + data_offset) = index_buffer;
         data_offset += sizeof(qword);
 
-        // textures $TODO: other textures
+        // Lights buffer
+        c_constant_buffer* const lights_buffer = m_shader_inputs[_input_pbr]->get_constant_buffer(_lighting_constant_buffer_lights);
+        *(qword*)(data + data_offset) = lights_buffer->get_gpu_address(m_frame_index, 0);
+        //memcpy(data + data_offset, lights_buffer->get_buffer_data(m_frame_index, 0), lights_buffer->get_buffer_struct_size());
+        data_offset += sizeof(qword);
+
+        // Textures
         *(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index * k_default_textures_count).ptr;
         data_offset += sizeof(qword);
-        //*(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 1).ptr;
-        //data_offset += sizeof(qword);
-        //*(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 2).ptr;
-        //data_offset += sizeof(qword);
-        //*(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((FRAME_BUFFER_COUNT * 3) + object_index + 3).ptr;
-        //data_offset += sizeof(qword);
+
+        // TLAS for shadow ray casting
+        *(qword*)(data + data_offset) = m_srv_uav_heap->GetGpuHandle((m_frame_index * 3) + 1).ptr;
+        data_offset += sizeof(qword); // CHECK if at offset 160 of table
 
         // align up to m_hit_entry_size
-        data_offset = ALIGN(data_offset, m_hit_entry_size);
-
-        //data_size = data_offset - data_size;
-        //LOG_MESSAGE("entry size: %d", data_size);
+        qword data_size = data_offset - offset_start;
+        assert(data_size < m_hit_entry_size);
+        data_offset += m_hit_entry_size - data_size;
     }
 
     // Unmap

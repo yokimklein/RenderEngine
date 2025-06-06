@@ -91,28 +91,42 @@ void main_win(qword hwnd)
 
 void main_init()
 {
-    // scene lights
+    // sun spot light
     g_scene->m_lights[0].m_enabled = static_cast<dword>(true);
-    g_scene->m_lights[0].m_light_type = _light_point;
-    g_scene->m_lights[0].m_spot_angle = XMConvertToRadians(45.0f);
+    g_scene->m_lights[0].m_light_type = _light_spot;
+    g_scene->m_lights[0].m_spot_angle = 0.785f;
+    g_scene->m_lights[0].m_position = vector4d{ 9.088f, 28.454f, 0.0f, 1.0f };
+    g_scene->m_lights[0].m_direction = vector4d{ -0.563f, -0.826f, 0.043f, 1.0f };
+    g_scene->m_lights[0].m_colour = colour_rgba{ 1.0f, 0.667f, 0.189f, 1.0f };
     g_scene->m_lights[0].m_constant_attenuation = 1.0f;
     g_scene->m_lights[0].m_linear_attenuation = 0.0f;
-    g_scene->m_lights[0].m_quadratic_attenuation = 0.235f;
+    g_scene->m_lights[0].m_quadratic_attenuation = 0.028f;
 
-    g_scene->m_lights[1] = g_scene->m_lights[0];
-    g_scene->m_lights[2] = g_scene->m_lights[0];
-    g_scene->m_lights[3] = g_scene->m_lights[0];
+    g_scene->m_lights[1].m_enabled = static_cast<dword>(true);
+    g_scene->m_lights[1].m_light_type = _light_point;
+    g_scene->m_lights[1].m_position = vector4d{ 10.157f, 3.049f, -4.737f, 1.0f };
+    g_scene->m_lights[1].m_colour = colour_rgba{ 1.0f, 0.867f, 0.444f, 1.0f };
+    g_scene->m_lights[1].m_constant_attenuation = 1.0f;
+    g_scene->m_lights[1].m_linear_attenuation = 0.0f;
+    g_scene->m_lights[1].m_quadratic_attenuation = 0.641f;
 
-    g_scene->m_lights[0].m_position = vector4d{ 6.5f, 0.0f, -4.0f, 1.0f };
-    g_scene->m_lights[0].m_colour = colour_rgba{ 1.0f, 1.0f, 1.0f, 1.0f };
-    g_scene->m_lights[1].m_position = vector4d{ -6.5f, 0.0f, -4.0f, 1.0f };
-    g_scene->m_lights[1].m_colour = colour_rgba{ 1.0f, 0.0f, 0.0f, 1.0f };
-    g_scene->m_lights[2].m_position = vector4d{ 6.5f, 0.0f, 4.0f, 1.0f };
-    g_scene->m_lights[2].m_colour = colour_rgba{ 0.0f, 1.0f, 0.0f, 1.0f };
-    g_scene->m_lights[3].m_position = vector4d{ -6.5f, 0.0f, 4.0f, 1.0f };
-    g_scene->m_lights[3].m_colour = colour_rgba{ 0.0f, 0.0f, 1.0f, 1.0f };
+    g_scene->m_lights[2] = g_scene->m_lights[1];
+    g_scene->m_lights[2].m_position = vector4d{ -9.822f, 3.047f, -4.741f, 1.0f };
 
-    g_scene->m_ambient_light = colour_rgba{ 0.1f, 0.1f, 0.1f, 1.0f };
+    g_scene->m_lights[3] = g_scene->m_lights[1];
+    g_scene->m_lights[3].m_position = vector4d{ 15.616f, 2.072f, 0.933f, 1.0f };
+
+    g_scene->m_lights[4] = g_scene->m_lights[1];
+    g_scene->m_lights[4].m_position = vector4d{ -13.596f, 2.693f, -0.061f, 1.0f };
+
+    g_scene->m_lights[5] = g_scene->m_lights[1];
+    g_scene->m_lights[5].m_position.v3.z = 4.801f;
+    g_scene->m_lights[5].m_position.v3.x = 10.03f;
+
+    g_scene->m_lights[6] = g_scene->m_lights[2];
+    g_scene->m_lights[6].m_position.v3.z = 4.798f;
+
+    g_scene->m_ambient_light = colour_rgba{ 0.056f, 0.056f, 0.056f, 1.0f };
 
     // TODO: Move these to object initialisation! Load data from external files
     // need to get asset manager working again to handle shared resources
@@ -163,7 +177,7 @@ void main_init()
         "door_stoneframe_01",
         "door_stoneframe_02",
         "floor_01",
-        "metal_door",
+        "metal_door_laatste",
         "ornament_01",
         "ornament_lion",
         "roof_tiles_01",
@@ -175,10 +189,10 @@ void main_init()
         "wood_01",
         "wood_door_01",
 
-        //"curtain_01_metal_door",
-        //"curtain_01",
-        //"curtain_02",
-        //"curtain_03",
+        "curtain_01_metal_door",
+        "curtain_01",
+        "curtain_02",
+        "curtain_03",
         
         //"dirt_decal",
         //"glass",
@@ -213,10 +227,10 @@ void main_init()
         { "wood_tile_01_BaseColor",         "wood_tile_01_Normal",          "wood_tile_01_Roughness",     		"wood_tile_01_Metalness" 			},
         { "wood_door_01_BaseColor",         "wood_door_01_Normal",          "wood_door_01_Roughness",     		"wood_door_01_Metalness" 			},
 
-        //{ "metal_door_01_BaseColor",        "metal_door_01_Normal",         "metal_door_01_Roughness",     		"metal_door_01_Metalness" 			},
-        //{ "curtain_fabric_red_BaseColor",   "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
-        //{ "curtain_fabric_green_BaseColor", "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
-        //{ "curtain_fabric_blue_BaseColor",  "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
+        { "metal_door_01_BaseColor",        "metal_door_01_Normal",         "metal_door_01_Roughness",     		"metal_door_01_Metalness" 			},
+        { "curtain_fabric_red_BaseColor",   "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
+        { "curtain_fabric_green_BaseColor", "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
+        { "curtain_fabric_blue_BaseColor",  "curtain_fabric_Normal",        "curtain_fabric_Roughness",     	"curtain_fabric_Metalness" 			},
         
         //{ "dirt_decal_01_alpha", "", "", "" },
         //{ "", "", "", "" }, // glass
@@ -298,12 +312,64 @@ void main_init()
     }
 }
 
+static bool g_camera_transitions_enabled = true;
+static float camera_transition_timer = 0.0f;
+constexpr float camera_sit_time = 10.0f;
+static dword camera_position_index = 0;
+constexpr dword camera_position_count = 6;
 void main_loop_body()
 {
 	static c_time_manager time_manager = c_time_manager();
 	const float delta_time = time_manager.delta_time();
     if (delta_time == 0.0) { return; }
 
+    if (GetAsyncKeyState(VK_TAB) & 0x0001)
+    {
+        g_camera_transitions_enabled = !g_camera_transitions_enabled;
+    }
+
+    if (g_camera_transitions_enabled)
+    {
+        camera_transition_timer += delta_time;
+        if (camera_transition_timer >= (camera_sit_time * (camera_position_index + 1)))
+        {
+            camera_position_index++;
+            if (camera_position_index == camera_position_count)
+            {
+                camera_position_index = 0;
+                camera_transition_timer = 0.0f;
+            }
+        }
+        switch (camera_position_index)
+        {
+        case 0:
+            g_scene->m_camera->set_position({ 7.689f, -0.157f, -1.912f });
+            g_scene->m_camera->set_direction({ -0.846f, 0.307f, 0.436f });
+            break;
+        case 1:
+            g_scene->m_camera->set_position({ 9.704f, 0.975f, -0.449f });
+            g_scene->m_camera->set_direction({ 0.875f, -0.173f, 0.453f });
+            break;
+        case 2:
+            g_scene->m_camera->set_position({ -10.707f, 0.404f, -3.495f });
+            g_scene->m_camera->set_direction({ 0.697f, -0.015f, -0.717f });
+            break;
+        case 3:
+            g_scene->m_camera->set_position({ -4.701f, 1.808f, 1.529f });
+            g_scene->m_camera->set_direction({ -0.892f, 0.230f, -0.390f });
+            break;
+        case 4:
+            g_scene->m_camera->set_position({ 8.784f, 6.301f, -2.019f });
+            g_scene->m_camera->set_direction({ -0.887f, -0.394f, 0.242f });
+            break;
+        case 5:
+            g_scene->m_camera->set_position({ 7.839f, 5.555f, 5.362f });
+            g_scene->m_camera->set_direction({ -0.69f, 0.108f, -0.716f });
+            break;
+        default:
+            break;
+        }
+    }
     // Uncomment to fake poor performance
     //Sleep(25);
 
@@ -322,7 +388,10 @@ void main_loop_body()
 
 void update_mouse(const int32 delta_x, const int32 delta_y)
 {
-	g_scene->m_camera->update_look(delta_x, delta_y);
+    if (!g_camera_transitions_enabled)
+    {
+	    g_scene->m_camera->update_look(delta_x, delta_y);
+    }
 	//LOG_MESSAGE(L"%d, %d", delta_x, delta_y);
 }
 
@@ -332,7 +401,7 @@ void update_input(const float delta_time)
 	const float camera_move_amount = 4.0f * delta_time;
 
     // Only accept input if window has focus
-    if (GetActiveWindow() != NULL)
+    if (GetActiveWindow() != NULL && !g_camera_transitions_enabled)
     {
         if (GetAsyncKeyState('W') & 0x8000)
             g_scene->m_camera->move_forward(camera_move_amount);

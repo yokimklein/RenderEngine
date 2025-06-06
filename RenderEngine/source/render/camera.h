@@ -26,6 +26,9 @@ public:
 	void set_clip_depth(const bounds2d clip_depth);
 	void set_field_of_view(const float field_of_view);
 
+	void set_position(const point3d position) { m_position = position; };
+	void set_direction(const point3d direction) { m_look_direction = direction; };
+
 	inline const matrix4x4 get_view() const { return m_view; };
 	const matrix4x4 get_projection() const { return m_projection; };
 	const point3d get_position() const { return m_position; };

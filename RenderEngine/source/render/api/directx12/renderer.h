@@ -198,10 +198,16 @@ private:
 	ID3D12Resource* m_sbt_storage[FRAME_BUFFER_COUNT]; // TODO: buffer this again? there's screen tearing going on atm
 	qword m_ray_gen_table_size;
 	qword m_ray_gen_entry_size;
-	qword m_miss_table_size;
+
+	qword m_main_miss_entry_size;
+	qword m_shadow_ray_miss_entry_size;
 	qword m_miss_entry_size;
+	qword m_miss_table_size;
+
+	qword m_main_hit_entry_size;
+	qword m_shadow_ray_hit_entry_size;
+	qword m_hit_entry_size; // largest of the two hit sizes
 	qword m_hit_table_size;
-	qword m_hit_entry_size;
 
 	c_shader_input* m_ray_gen_input;
 
