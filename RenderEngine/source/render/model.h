@@ -10,6 +10,7 @@ struct s_geometry_resources
 #ifdef API_DX12
 	ID3D12Resource* vertex_buffer; // GPU memory
 	D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view;
+	dword vertex_count;
 	ID3D12Resource* index_buffer; // GPU memory
 	D3D12_INDEX_BUFFER_VIEW index_buffer_view;
 	dword index_count;

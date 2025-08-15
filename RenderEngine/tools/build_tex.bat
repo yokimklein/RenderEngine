@@ -11,7 +11,7 @@ set destination_dir=%destination_dir:"=%
 set tool_dir=%tool_dir:"=%
 
 :: TODO: convert different texture types to different DDS formats
-for /r "%source_dir%" %%f in (*.tga) do (
+for /r "%source_dir%" %%f in (*.tga *.png) do (
     set "full_dir=%%~dpf"
     set "relative_dir=!full_dir:%source_dir%=!"
     set "compiled_dir=%destination_dir%!relative_dir!
@@ -23,7 +23,7 @@ for /r "%source_dir%" %%f in (*.tga) do (
         mkdir "!compiled_dir!"
     )
 	
-	"%tool_dir%\texconv" "%%f" -o "!compiled_dir!" -hflip -vflip -y >NUL
+	"%tool_dir%\texconv" "%%f" -o "!compiled_dir!" -y -f BC7_UNORM -srgb >NUL
 )
 
 :: Move existing DDS files to compiled assets

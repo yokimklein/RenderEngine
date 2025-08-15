@@ -1,6 +1,7 @@
 #pragma once
 #include <types.h>
 #include <render/constants.h>
+#include <d3d12.h>
 
 // post processing pass stages in sequential order
 enum e_post_processing_passes
@@ -19,21 +20,21 @@ enum e_render_targets
 {
 	// Deferred rendering targets - DO NOT MOVE THIS
 	_render_target_deferred = 0,
-
-	_render_target_lighting,
-
-	_render_target_shading,
-
+	_render_target_pbr,
 	_render_target_texcams,
+
+	_render_target_raytrace,
 
 	// Render target count before post processing passes
 	k_default_render_target_count,
 
 	// Reserved targets for post processing passes - DO NOT MOVE THESE
-	k_render_target_post_reserved = k_default_render_target_count + k_post_processing_passes - 1,
+	k_render_target_post_reserved = k_default_render_target_count - 1 + k_post_processing_passes,
 
 	k_render_target_count,
-	k_render_target_final = k_render_target_count - 1
+
+	k_render_target_final_raster = k_render_target_count - 1,
+	k_render_target_final_raytrace = _render_target_raytrace
 };
 static const wchar_t* const get_render_target_name(const e_render_targets target_type);
 
@@ -49,7 +50,7 @@ class c_shader;
 class c_render_target
 {
 public:
-	c_render_target(ID3D12Device* const device, c_shader_input* const shader_input, const e_render_targets target_type);
+	c_render_target(ID3D12Device5* const device, c_shader_input* const shader_input, const e_render_targets target_type);
 	~c_render_target();
 
 	void begin_render(ID3D12GraphicsCommandList* const command_list, const dword frame_index, const bool clear_buffers = true);
@@ -64,7 +65,7 @@ public:
 private:
 	c_packed_enum<e_render_targets, dword, _render_target_deferred, k_render_target_count> m_target_type;
 
-	ID3D12Device* const m_device; // local reference, DO NOT clean this up!
+	ID3D12Device5* const m_device; // local reference, DO NOT clean this up!
 
 	c_descriptor_heap* m_render_target_view_heap; // Render Target View (RTV) Heap, this is where the render target/back buffers are stored
 	ID3D12Resource** m_render_target_buffers; // Render target resources in the RTV heap (These are our back buffer textures), this is an array

@@ -2,11 +2,11 @@
 
 struct vs_input
 {
-	float4 position : POSITION; // float4 for padding, ignore w value
-	float3 normal : NORMAL;
-	float2 tex_coord : TEXCOORD0; // How is this padding correctly? TODO: verify struct passing in and out correctly in debugger
-	float3 tangent : TANGENT;
-	float3 binormal : BINORMAL;
+    float4 position : POSITION; // float4 for padding, ignore w value
+    float3 normal : NORMAL;
+    float2 tex_coord : TEXCOORD0; // How is this padding correctly? TODO: verify struct passing in and out correctly in debugger
+    float3 tangent : TANGENT;
+    float3 binormal : BINORMAL;
 };
 
 struct vs_output
@@ -21,16 +21,19 @@ struct vs_output
 
 cbuffer object_cb : register(b0)
 {
-	float4x4 projection;
-	float4x4 view;
-	float4x4 world;
+    float4x4 projection;
+    float4x4 projection_inverse;
+    float4x4 view;
+    float4x4 view_inverse;
+    float4x4 world;
+    float4 camera_position;
 };
 
 vs_output vs_main(vs_input input)
 {
-	vs_output output = (vs_output) 0;
+	vs_output output = (vs_output)0;
     
-	output.position_local = mul(input.position, world);
+    output.position_local = mul(input.position, world);
 	output.position_world = output.position_local;
 	output.position_local = mul(output.position_local, view);
 	output.position_local = mul(output.position_local, projection);

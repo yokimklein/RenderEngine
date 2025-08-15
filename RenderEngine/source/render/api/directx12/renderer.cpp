@@ -24,6 +24,8 @@
 #include <scene/scene.h>
 #include <render/imgui_overlay.h>
 #include <ImGuizmo.h>
+#include <nvapi.h>
+#include <comdef.h>
 
 // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12HelloWorld/src/HelloTriangle/D3D12HelloTriangle.cpp
 // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12HelloWorld/src/HelloTriangle/DXSample.cpp
@@ -38,16 +40,35 @@ bool c_renderer_dx12::initialise_factory()
 #ifdef _DEBUG
     // Enable DirectX debug layer on debug enabled builds
     hr = D3D12GetDebugInterface(IID_PPV_ARGS(&m_dx12_debug));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     m_dx12_debug->EnableDebugLayer();
+    m_dx12_debug->SetEnableGPUBasedValidation(TRUE);
+    m_dx12_debug->SetEnableSynchronizedCommandQueueValidation(TRUE);
+    
     dxgi_factory_flags = DXGI_CREATE_FACTORY_DEBUG;
 #endif
 
     hr = CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(&m_factory));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     return K_SUCCESS;
 }
+
+#if defined(ENABLE_NVAPI_RAYTRACING_VALIDATION)
+// Validation callback
+static void __stdcall validation_message_callback(void* user_data, NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY severity, const char* message_code, const char* message, const char* message_details)
+{
+    switch (severity)
+    {
+        case NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_ERROR:
+            LOG_ERROR("Ray Tracing Validation Error: [%hs] %hs\n%hs", message_code, message, message_details);
+            break;
+        case NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_WARNING:
+            LOG_WARNING("Ray Tracing Validation Warning: [%hs] %hs\n%hs", message_code, message, message_details);
+            break;
+    }
+}
+#endif
 
 // Get the first available highest performance hardware adapter that supports DX12
 bool c_renderer_dx12::initialise_device_adapter()
@@ -68,7 +89,7 @@ bool c_renderer_dx12::initialise_device_adapter()
             continue;
         }
         // Break out if we find a DX12 supported device
-        if (SUCCEEDED(D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_0, _uuidof(ID3D12Device), nullptr)))
+        if (SUCCEEDED(D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_1, _uuidof(ID3D12Device), nullptr)))
         {
             LOG_MESSAGE(L"Adapter found: %ws", adapter_desc.Description);
             adapter_found = true;
@@ -84,8 +105,8 @@ bool c_renderer_dx12::initialise_device_adapter()
     }
 
     // Create device from found adapter
-    HRESULT hr = D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_device));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    HRESULT hr = D3D12CreateDevice(m_adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_device));
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     const bool adapter_valid = m_adapter != nullptr;
     assert(adapter_valid);
@@ -94,6 +115,45 @@ bool c_renderer_dx12::initialise_device_adapter()
         LOG_ERROR(L"Adapter was nullptr!");
         return K_FAILURE;
     }
+
+#if defined(ENABLE_NVAPI_RAYTRACING_VALIDATION)
+    if (NvAPI_Initialize() != NVAPI_OK)
+    {
+        LOG_ERROR("NvAPI failed to initialise!");
+        return K_FAILURE;
+    }
+    if (NvAPI_D3D12_EnableRaytracingValidation(m_device, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE) != NVAPI_OK)
+    {
+        LOG_ERROR("NvAPI failed to enabled RT validation!");
+        return K_FAILURE;
+    }
+    void* nvapiValidationCallbackHandle = nullptr;
+    if (NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_device, &validation_message_callback, nullptr, &nvapiValidationCallbackHandle) != NVAPI_OK)
+    {
+        LOG_ERROR("NvAPI failed to register RT validation callback message!");
+        return K_FAILURE;
+    }
+#endif
+
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+    hr = m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
+    if (options5.RaytracingTier < D3D12_RAYTRACING_TIER_1_0)
+    {
+        LOG_ERROR("Raytracing not supported by this device!");
+        return K_FAILURE;
+    }
+    else
+    {
+        LOG_MESSAGE("Device supports raytracing tier %d", options5.RaytracingTier);
+    }
+#if defined(_DEBUG)
+    hr = D3D12GetDebugInterface(IID_PPV_ARGS(&m_dred_settings));
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
+    m_dred_settings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+    m_dred_settings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+    m_dred_settings->SetWatsonDumpEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+#endif
 
     return K_SUCCESS;
 }
@@ -104,11 +164,12 @@ bool c_renderer_dx12::initialise_command_queue()
     queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     HRESULT hr = m_device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&m_command_queue));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     return K_SUCCESS;
 }
 
+// TODO: reinitialise swapchain on window resize
 bool c_renderer_dx12::initialise_swapchain(const HWND hWnd)
 {
     HRESULT hr = S_OK;
@@ -133,6 +194,8 @@ bool c_renderer_dx12::initialise_swapchain(const HWND hWnd)
 #ifdef PLATFORM_WINDOWS
     // For windows
     
+    // $TODO: Microsoft recommends against using factory->CreateSwapChain, try use CreateSwapChainForHwnd instead?
+    // https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/nf-dxgi1_2-idxgifactory2-createswapchainforhwnd
     IDXGISwapChain* temp_swapchain;
     m_factory->CreateSwapChain(m_command_queue, &swapchain_desc, &temp_swapchain);
     m_swapchain = static_cast<IDXGISwapChain3*>(temp_swapchain);
@@ -146,7 +209,7 @@ bool c_renderer_dx12::initialise_swapchain(const HWND hWnd)
     for (dword i = 0; i < FRAME_BUFFER_COUNT; i++)
     {
         hr = m_swapchain->GetBuffer(i, IID_PPV_ARGS(&m_backbuffers[i]));
-        if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+        if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
         m_backbuffers[i]->SetName(L"Swapchain backbuffer");
     }
 
@@ -159,9 +222,12 @@ bool c_renderer_dx12::initialise_render_target_view()
     HRESULT hr = S_OK;
 
     m_render_targets[_render_target_deferred] = new c_render_target(m_device, m_shader_inputs[_input_deferred], _render_target_deferred);
-    m_render_targets[_render_target_lighting] = new c_render_target(m_device, m_shader_inputs[_input_lighting], _render_target_lighting);
-    m_render_targets[_render_target_shading] = new c_render_target(m_device, m_shader_inputs[_input_shading], _render_target_shading);
+    m_render_targets[_render_target_pbr] = new c_render_target(m_device, m_shader_inputs[_input_pbr], _render_target_pbr);
+    //m_render_targets[_render_target_shading] = new c_render_target(m_device, m_shader_inputs[_input_shading], _render_target_shading);
     m_render_targets[_render_target_texcams] = new c_render_target(m_device, m_shader_inputs[_input_texcam], _render_target_texcams);
+
+    // $TODO:
+    m_render_targets[_render_target_raytrace] = new c_render_target(m_device, m_shader_inputs[_input_deferred], _render_target_deferred);
 
     for (dword i = k_default_render_target_count; i <= k_render_target_post_reserved; i++)
     {
@@ -176,7 +242,7 @@ bool c_renderer_dx12::initialise_command_allocators()
     for (dword i = 0; i < FRAME_BUFFER_COUNT; i++)
     {
         HRESULT hr = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_command_allocators[i]));
-        if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+        if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     }
     return K_SUCCESS;
 }
@@ -184,7 +250,13 @@ bool c_renderer_dx12::initialise_command_allocators()
 bool c_renderer_dx12::initialise_command_list()
 {
     HRESULT hr = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_command_allocators[m_frame_index], NULL, IID_PPV_ARGS(&m_command_list));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
+
+    //hr = m_command_list->Close();
+    //if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
+    //
+    //hr = m_command_list->Reset(m_command_allocators[m_frame_index], NULL);
+    //if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     return K_SUCCESS;
 }
@@ -196,7 +268,7 @@ bool c_renderer_dx12::initialise_fences()
     for (dword i = 0; i < FRAME_BUFFER_COUNT; i++)
     {
         HRESULT hr = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fences[i]));
-        if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+        if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
         m_fence_values[i] = 0; // initial fence value
     }
 
@@ -208,7 +280,7 @@ bool c_renderer_dx12::initialise_fences()
     if (!fence_valid)
     {
         // just to log a potential error
-        HRESULT_VALID(HRESULT_FROM_WIN32(GetLastError()));
+        HRESULT_VALID(m_device, HRESULT_FROM_WIN32(GetLastError()));
         // return failure anyway, event is already nullptr
         return K_FAILURE;
     }
@@ -250,12 +322,10 @@ bool c_renderer_dx12::initialise_input_layouts()
     {
         // UNORM - Unsigned normalised, will be between 0.0f-1.0f
         DXGI_FORMAT_R8G8B8A8_UNORM, // albedo
-        DXGI_FORMAT_R8G8B8A8_UNORM, // specular
+        DXGI_FORMAT_R8_UNORM, // roughness
+        DXGI_FORMAT_R8_UNORM, // metallic
         DXGI_FORMAT_R16G16B16A16_FLOAT, // normal
         DXGI_FORMAT_R32G32B32A32_FLOAT,  // position
-        DXGI_FORMAT_R8G8B8A8_UNORM, // emissive
-        DXGI_FORMAT_R8G8B8A8_UNORM, // ambient
-        DXGI_FORMAT_R8G8B8A8_UNORM // diffuse
     };
     static_assert(_countof(deferred_render_target_formats) == k_gbuffer_count);
     m_shader_inputs[_input_deferred] = new c_shader_input
@@ -268,20 +338,15 @@ bool c_renderer_dx12::initialise_input_layouts()
         true, D3D12_COMPARISON_FUNC_LESS
     );
 
-    // LIGHTING SHADER INPUTS
+    // PBR SHADER INPUTS
     c_constant_buffer* constant_buffers_lighting[k_lighting_constant_buffer_count] =
     {
-        new c_constant_buffer(m_device, _render_pass_lighting, _lighting_constant_buffer_lights, sizeof(s_light_properties_cb), D3D12_SHADER_VISIBILITY_PIXEL)
+        new c_constant_buffer(m_device, _render_pass_pbr, _lighting_constant_buffer_lights, sizeof(s_light_properties_cb), D3D12_SHADER_VISIBILITY_PIXEL)
     };
     static_assert(_countof(constant_buffers_lighting) == k_lighting_constant_buffer_count);
     CD3DX12_DESCRIPTOR_RANGE lighting_texture_range[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_lighting_textures_count, 0 } };
-    DXGI_FORMAT lighting_render_target_formats[] =
-    {
-        DXGI_FORMAT_R8G8B8A8_UNORM,
-        DXGI_FORMAT_R8G8B8A8_UNORM,
-        DXGI_FORMAT_R8G8B8A8_UNORM
-    };
-    m_shader_inputs[_input_lighting] = new c_shader_input
+    DXGI_FORMAT lighting_render_target_formats[] = { DXGI_FORMAT_R8G8B8A8_UNORM };
+    m_shader_inputs[_input_pbr] = new c_shader_input
     (
         m_device, k_lighting_textures_count,
         constant_buffers_lighting, _countof(constant_buffers_lighting),
@@ -292,17 +357,17 @@ bool c_renderer_dx12::initialise_input_layouts()
     );
 
     // SHADING SHADER INPUTS
-    CD3DX12_DESCRIPTOR_RANGE shading_texture_range[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_shading_textures_count, 0 } };
-    DXGI_FORMAT shading_render_target_formats[] = { DXGI_FORMAT_R8G8B8A8_UNORM };
-    m_shader_inputs[_input_shading] = new c_shader_input
-    (
-        m_device, k_shading_textures_count,
-        nullptr, 0,
-        simple_vertex_input_elements, _countof(simple_vertex_input_elements),
-        shading_texture_range, _countof(shading_texture_range),
-        shading_render_target_formats, _countof(shading_render_target_formats),
-        false, D3D12_COMPARISON_FUNC_NONE
-    );
+    //CD3DX12_DESCRIPTOR_RANGE shading_texture_range[] = { { D3D12_DESCRIPTOR_RANGE_TYPE_SRV, k_shading_textures_count, 0 } };
+    //DXGI_FORMAT shading_render_target_formats[] = { DXGI_FORMAT_R8G8B8A8_UNORM };
+    //m_shader_inputs[_input_shading] = new c_shader_input
+    //(
+    //    m_device, k_shading_textures_count,
+    //    nullptr, 0,
+    //    simple_vertex_input_elements, _countof(simple_vertex_input_elements),
+    //    shading_texture_range, _countof(shading_texture_range),
+    //    shading_render_target_formats, _countof(shading_render_target_formats),
+    //    false, D3D12_COMPARISON_FUNC_NONE
+    //);
 
     // TEXCAM SHADER INPUTS
     // this is a range of descriptors inside a descriptor heap, allows use of resources from multiple heaps
@@ -343,8 +408,8 @@ bool c_renderer_dx12::initialise_input_layouts()
     );
 
     m_deferred_shader = new c_shader(this, L"assets\\shaders\\default_vs.hlsl", "vs_main", L"assets\\shaders\\deferred.hlsl", "ps_deferred", _input_deferred);
-    m_lighting_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\lighting.hlsl", "ps_deferred_lighting", _input_lighting);
-    m_shading_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\shading.hlsl", "ps_deferred_shading", _input_shading);
+    m_pbr_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\pbr_raster.hlsl", "ps_deferred_pbr", _input_pbr);
+    //m_shading_shader = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\shading.hlsl", "ps_deferred_shading", _input_shading);
     m_texcam_shader = new c_shader(this, L"assets\\shaders\\default_vs.hlsl", "vs_main", L"assets\\shaders\\texcam.hlsl", "ps_sample_texture", _input_texcam);
     
     m_post_shaders[_post_processing_default] = new c_shader(this, L"assets\\shaders\\screen_quad.hlsl", "vs_screen_quad", L"assets\\shaders\\post_processing.hlsl", "ps_tex_to_screen", _input_post_processing);
@@ -394,7 +459,7 @@ bool c_renderer_dx12::create_shader(const wchar_t* vs_path, const char* vs_name,
         {
             LOG_ERROR(L"%hs", (char*)error->GetBufferPointer());
         }
-        HRESULT_VALID(hr);
+        HRESULT_VALID(m_device, hr);
         return K_FAILURE;
     }
     // fill out a shader bytecode structure, which is basically just a pointer
@@ -410,7 +475,7 @@ bool c_renderer_dx12::create_shader(const wchar_t* vs_path, const char* vs_name,
         {
             LOG_ERROR(L"%hs", (char*)error->GetBufferPointer());
         }
-        HRESULT_VALID(hr);
+        HRESULT_VALID(m_device, hr);
         return K_FAILURE;
     }
     // fill out shader bytecode structure for pixel shader
@@ -447,6 +512,7 @@ bool c_renderer_dx12::create_shader(const wchar_t* vs_path, const char* vs_name,
     pso_desc.SampleDesc = sample_desc; // must be the same sample description as the swapchain and depth/stencil buffer
     pso_desc.SampleMask = UINT_MAX; // sample mask has to do with multi-sampling. 0xffffffff means point sampling is done
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); // a default rasterizer state
+    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT; // Cull front instead of back for right-handed coordinate models
     pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT); // a default blent state
     pso_desc.NumRenderTargets = shader_input->m_render_target_count;
     pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // a default depth stencil state
@@ -465,7 +531,7 @@ bool c_renderer_dx12::create_shader(const wchar_t* vs_path, const char* vs_name,
 
     // create the pso
     hr = m_device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&pipeline_state));
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     out_resources->vertex_shader = vertex_shader;
     out_resources->pixel_shader = pixel_shader;
@@ -518,7 +584,7 @@ bool c_renderer_dx12::create_geometry(vertex vertices[], dword vertices_size, dw
     vector3d* tangents = new vector3d[vertex_count];
     vector3d* binormals = new vector3d[vertex_count];
     hr = ComputeTangentFrame((uint32_t*)indices, face_count, (XMFLOAT3*)positions, (XMFLOAT3*)normals, (XMFLOAT2*)texcoords, vertex_count, (XMFLOAT3*)tangents, (XMFLOAT3*)binormals);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     delete[] positions;
     delete[] normals;
     delete[] texcoords;
@@ -531,6 +597,7 @@ bool c_renderer_dx12::create_geometry(vertex vertices[], dword vertices_size, dw
     delete[] binormals;
 
     this->upload_geometry(sizeof(vertex), vertices, vertices_size, indices, indices_size, out_resources);
+    out_resources->vertex_count = vertex_count;
 
     return true;
 }
@@ -542,6 +609,7 @@ bool c_renderer_dx12::create_simple_geometry(simple_vertex vertices[], dword ver
     return result;
 }
 
+// Loads right-handed models (engine is left handed)
 bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_resources* const out_resources)
 {
     assert(out_resources != nullptr);
@@ -563,7 +631,7 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
     vbo_file.read(reinterpret_cast<char*>(&vertex_count), sizeof(dword));
     if (vertex_count == 0)
     {
-        LOG_WARNING(L"vertex count for VBO %s was 0! stopping load", file_path);
+        LOG_WARNING(L"vertex count for VBO_I32 %s was 0! stopping load", file_path);
         s_geometry_resources empty_resources = {};
         *out_resources = empty_resources;
         return false;
@@ -572,7 +640,7 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
     vbo_file.read(reinterpret_cast<char*>(&index_count), sizeof(dword));
     if (index_count == 0)
     {
-        LOG_WARNING(L"index count for VBO %s was 0! stopping load", file_path);
+        LOG_WARNING(L"index count for VBO_I32 %s was 0! stopping load", file_path);
         s_geometry_resources empty_resources = {};
         *out_resources = empty_resources;
         return false;
@@ -581,18 +649,18 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
     vertex_part* vertices = new vertex_part[vertex_count];
     vbo_file.read(reinterpret_cast<char*>(vertices), sizeof(vertex_part) * vertex_count);
 
-    uword* indices = new uword[index_count];
-    vbo_file.read(reinterpret_cast<char*>(indices), sizeof(uword) * index_count);
-
-    // conversion to full vertex type & 32 bit index buffer
     dword* indices32 = new dword[index_count];
-    for (dword i = 0; i < index_count; i++)
-    {
-        indices32[i] = indices[i];
-    }
+    vbo_file.read(reinterpret_cast<char*>(indices32), sizeof(dword) * index_count);
+
     vertex* full_vertices = new vertex[vertex_count];
     for (dword i = 0; i < vertex_count; i++)
     {
+        // Convert from right to left handed
+        vertices[i].position.z *= -1.0f;
+        vertices[i].tex_coord.x = 1.0f - vertices[i].tex_coord.x;
+        vertices[i].tex_coord.y = 1.0f - vertices[i].tex_coord.y;
+        vertices[i].normal.z *= -1.0f;
+
         full_vertices[i].vertex = vertices[i];
     }
 
@@ -601,7 +669,6 @@ bool c_renderer_dx12::load_model(const wchar_t* const file_path, s_geometry_reso
 
     // free memory
     delete[] vertices;
-    delete[] indices;
     delete[] indices32;
     delete[] full_vertices;
 
@@ -614,10 +681,10 @@ bool c_renderer_dx12::initialise_default_geometry()
 
     simple_vertex vertices[] =
     {
-        { { -1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f } }, // bottom left
         { { -1.0f,  1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } }, // top left
+        { { -1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f } }, // bottom left
+        { {  1.0f,  1.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } }, // top right
         { {  1.0f, -1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } }, // bottom right
-        { {  1.0f,  1.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } }  // top right
     };
 
     const bool creation_succeeded = this->create_simple_geometry(vertices, sizeof(vertices), &m_screen_quad);
@@ -642,7 +709,7 @@ bool c_renderer_dx12::upload_vertex_buffer(const dword vertex_size, const void* 
     // default heap is memory on the GPU. Only the GPU has access to this memory
     // To get data into this heap, we will have to upload the data using an upload heap
     hr = CreateUAVBuffer(m_device, vertices_size, &out_resources->vertex_buffer, D3D12_RESOURCE_STATE_COMMON);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     out_resources->vertex_buffer->SetName(L"Vertex Buffer Resource Heap");
 
     // setup vertex data subresource
@@ -685,7 +752,7 @@ bool c_renderer_dx12::upload_index_buffer(const dword indices[], const dword ind
 
     // create default heap to hold index buffer on GPU
     hr = CreateUAVBuffer(m_device, indices_size, &out_resources->index_buffer, D3D12_RESOURCE_STATE_COMMON);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     out_resources->index_buffer->SetName(L"Index Buffer Resource Heap");
 
     // setup index data subresource
@@ -728,7 +795,7 @@ bool c_renderer_dx12::load_texture(const e_texture_type texture_type, const wcha
     ResourceUploadBatch resource_upload(m_device);
     resource_upload.Begin();
     hr = CreateDDSTextureFromFile(m_device, resource_upload, file_path, &texture_resource);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
     texture_resource->SetName(L"Texture Buffer Resource Heap");
     std::future<void> upload_thread = resource_upload.End(m_command_queue);
     // wait for upload thread to terminate
@@ -743,14 +810,16 @@ bool c_renderer_dx12::upload_assets()
 {
     HRESULT hr = S_OK;
     // Now we execute the command list to upload the initial assets (triangle data)
-    m_command_list->Close();
+    hr = m_command_list->Close();
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
+
     ID3D12CommandList* pp_command_lists[] = { m_command_list };
     m_command_queue->ExecuteCommandLists(_countof(pp_command_lists), pp_command_lists);
 
     // increment the fence value now, otherwise the buffer might not be uploaded by the time we start drawing
     m_fence_values[m_frame_index]++;
     hr = m_command_queue->Signal(m_fences[m_frame_index], m_fence_values[m_frame_index]);
-    if (!HRESULT_VALID(hr)) { return K_FAILURE; }
+    if (!HRESULT_VALID(m_device, hr)) { return K_FAILURE; }
 
     return K_SUCCESS;
 }
@@ -811,7 +880,7 @@ c_renderer_dx12::~c_renderer_dx12()
 
     // get swapchain out of full screen before exiting
     BOOL fs = false;
-    if (HRESULT_VALID(m_swapchain->GetFullscreenState(&fs, nullptr)))
+    if (HRESULT_VALID(m_device, m_swapchain->GetFullscreenState(&fs, nullptr)))
     {
         m_swapchain->SetFullscreenState(false, nullptr);
     }
@@ -848,7 +917,7 @@ c_renderer_dx12::~c_renderer_dx12()
     }
 
     delete m_deferred_shader;
-    delete m_lighting_shader;
+    delete m_pbr_shader;
     delete m_texcam_shader;
     for (dword i = 0; i < k_post_processing_passes; i++)
     {
@@ -857,7 +926,7 @@ c_renderer_dx12::~c_renderer_dx12()
 }
 
 // TODO: decouple arg from windows
-bool c_renderer_dx12::initialise(const HWND hWnd)
+bool c_renderer_dx12::initialise(const HWND hWnd, c_scene* const scene)
 {
     if (m_initialised)
     {
@@ -879,7 +948,7 @@ bool c_renderer_dx12::initialise(const HWND hWnd)
     if (!this->initialise_swapchain(hWnd)) { return K_FAILURE; }
 
     // Disable DXGI responding to alt + enter for toggling fullscreen
-    //if (!HRESULT_VALID(m_factory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER))) return false;
+    //if (!HRESULT_VALID(m_device, m_factory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER))) return false;
 
     // Command allocators
     if (!this->initialise_command_allocators()) { return K_FAILURE; }
@@ -899,6 +968,11 @@ bool c_renderer_dx12::initialise(const HWND hWnd)
 
     // Default geometry
     if (!this->initialise_default_geometry()) { return K_FAILURE; }
+
+    // Raytacing pipeline
+    if (!this->initialise_raytracing_pipeline()) { return K_FAILURE; }
+    //this->create_acceleration_structures(scene);
+    //if (!this->create_shader_binding_table(scene, false)) { return K_FAILURE; }
 
     // Execute the command list to upload the initial assets
     if (!this->upload_assets()) { return K_FAILURE; }
@@ -929,7 +1003,7 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     // we can only reset an allocator once the gpu is done with it
     // resetting an allocator frees the memory that the command list was stored in
     hr = m_command_allocators[m_frame_index]->Reset();
-    if (!HRESULT_VALID(hr)) { return; }
+    if (!HRESULT_VALID(m_device, hr)) { return; }
 
     // reset the command list. by resetting the command list we are putting it into
     // a recording state so we can start recording commands into the command allocator.
@@ -942,11 +1016,97 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     // anything but an initial default pipeline, which is what we get by setting
     // the second parameter to NULL
     hr = m_command_list->Reset(m_command_allocators[m_frame_index], NULL);
-    if (!HRESULT_VALID(hr)) { return; }
+    if (!HRESULT_VALID(m_device, hr)) { return; }
     // here we start recording commands into the commandList (which all the commands will be stored in the commandAllocator)
 
     m_command_list->RSSetViewports(1, &m_viewport); // set the viewports
     m_command_list->RSSetScissorRects(1, &m_scissor_rect); // set the scissor rects
+
+    // Raster pipeline
+    if (m_raster)
+    {
+        this->update_raster(scene);
+    }
+    else
+    {
+        this->update_raytrace(scene);
+    }
+
+    // Draw ImGUI
+    // Start the Dear ImGui frame
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+    ImGuizmo::SetOrthographic(false);
+    ImGuizmo::BeginFrame();
+
+    if (m_raster)
+    {
+        // Make the gbuffers available for ImGUI
+        for (dword i = 0; i < k_gbuffer_count; i++)
+        {
+            // TODO: is calling this several times a frame going to cause a memory leak?
+            CreateShaderResourceView(m_device, m_render_targets[_render_target_deferred]->get_frame_resource(i, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
+            m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
+        }
+        //for (dword i = k_gbuffer_count; i < k_gbuffer_count + k_light_buffer_count; i++)
+        //{
+        //    // Ditto above
+        //    dword target_index = i - k_gbuffer_count;
+        //    CreateShaderResourceView(m_device, lighting_target->get_frame_resource(target_index, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
+        //    m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
+        //}
+        {
+            // SRV for depth buffer
+            D3D12_SHADER_RESOURCE_VIEW_DESC depth_srv = {};
+            depth_srv.Format = DXGI_FORMAT_R32_FLOAT;
+            depth_srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            depth_srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            depth_srv.Texture2D.MipLevels = 1;
+
+            dword index = k_gbuffer_count + k_light_buffer_count;
+            ID3D12Resource* texture_resource = m_render_targets[_render_target_deferred]->get_depth_resource(m_frame_index);
+            m_device->CreateShaderResourceView(texture_resource, &depth_srv, m_imgui_descriptor_heap->get_cpu_handle(index));
+            m_gbuffer_gpu_handles[index] = m_imgui_descriptor_heap->get_gpu_handle(index);
+        }
+    }
+    else
+    {
+        // Start raster render for ImGUI
+        m_render_targets[_render_target_raytrace]->begin_render(m_command_list, m_frame_index, false);
+    }
+
+    imgui_overlay(scene, this, fps_counter);
+
+    c_render_target* final_target;
+    if (m_raster)
+    {
+        final_target = m_render_targets[k_render_target_final_raster];
+    }
+    else
+    {
+        final_target = m_render_targets[k_render_target_final_raytrace];
+    }
+
+    ID3D12DescriptorHeap* imgui_descriptor_heaps[] = { m_imgui_descriptor_heap->get_heap() };
+    m_command_list->SetDescriptorHeaps(_countof(imgui_descriptor_heaps), imgui_descriptor_heaps);
+    ImGui::Render();
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_command_list);
+
+    // prepare final frame to copy into swapchain
+    TransitionResource(m_command_list, final_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+    ID3D12Resource* final_frame = final_target->get_frame_resource(0, m_frame_index);
+    // copy final frame to swapchain buffer and get ready to present
+    m_command_list->CopyResource(m_backbuffers[m_frame_index], final_frame);
+    TransitionResource(m_command_list, final_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    TransitionResource(m_command_list, m_backbuffers[m_frame_index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+
+    hr = m_command_list->Close();
+    if (!HRESULT_VALID(m_device, hr)) { return; }
+}
+
+void c_renderer_dx12::update_raster(c_scene* const scene)
+{
     m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
 
     // Deferred pass
@@ -989,52 +1149,52 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
         object_index++;
     }
 
-    // Lighting pass
-    c_render_target* lighting_target = m_render_targets[_render_target_lighting];
-    lighting_target->begin_render(m_command_list, m_frame_index);
-    e_gbuffers lighting_gbuffers[k_lighting_textures_count] = { _gbuffer_position, _gbuffer_normal, _gbuffer_ambient, _gbuffer_diffuse, _gbuffer_specular };
+    // PBR + Lighting pass
+    c_render_target* pbr_target = m_render_targets[_render_target_pbr];
+    pbr_target->begin_render(m_command_list, m_frame_index);
+    e_gbuffers pbr_gbuffers[k_lighting_textures_count] = { _gbuffer_position, _gbuffer_normal, _gbuffer_albedo, _gbuffer_roughness, _gbuffer_metallic };
     for (dword i = 0; i < k_lighting_textures_count; i++)
     {
-        ID3D12Resource* deferred_texture = deferred_target->get_frame_resource(lighting_gbuffers[i], m_frame_index);
-        lighting_target->assign_texture(deferred_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
+        ID3D12Resource* deferred_texture = deferred_target->get_frame_resource(pbr_gbuffers[i], m_frame_index);
+        pbr_target->assign_texture(deferred_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
     }
-    lighting_target->begin_draw(m_command_list, m_lighting_shader, 0);
-    this->set_constant_buffer_view(lighting_target, _lighting_constant_buffer_lights, 0);
+    pbr_target->begin_draw(m_command_list, m_pbr_shader, 0);
+    this->set_constant_buffer_view(pbr_target, _lighting_constant_buffer_lights, 0);
     // Draw screen quad
     m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     m_command_list->IASetVertexBuffers(0, 1, &m_screen_quad.vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
     m_command_list->DrawInstanced(4, 1, 0, 0);
 
-    // Shading pass
-    c_render_target* shading_target = m_render_targets[_render_target_shading];
-    shading_target->begin_render(m_command_list, m_frame_index);
-    e_light_buffers shading_light_buffers[k_light_buffer_count] = { _light_buffer_ambient, _light_buffer_diffuse, _light_buffer_specular };
-    for (dword i = 0; i < _texture_shading_albedo; i++)
-    {
-        ID3D12Resource* lighting_texture = lighting_target->get_frame_resource(shading_light_buffers[i], m_frame_index);
-        shading_target->assign_texture(lighting_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
-    }
-    e_gbuffers shading_gbuffers[k_shading_textures_count - _texture_shading_albedo] = { _gbuffer_albedo, _gbuffer_emissive };
-    for (dword i = _texture_shading_albedo; i < k_shading_textures_count; i++)
-    {
-        ID3D12Resource* deferred_texture = deferred_target->get_frame_resource(shading_gbuffers[i - _texture_shading_albedo], m_frame_index);
-        shading_target->assign_texture(deferred_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
-    }
-    shading_target->begin_draw(m_command_list, m_shading_shader, 0);
-    // Draw screen quad
-    m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    m_command_list->IASetVertexBuffers(0, 1, &m_screen_quad.vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
-    m_command_list->DrawInstanced(4, 1, 0, 0);
+    //// Shading pass
+    //c_render_target* shading_target = m_render_targets[_render_target_shading];
+    //shading_target->begin_render(m_command_list, m_frame_index);
+    //e_light_buffers shading_light_buffers[k_light_buffer_count] = { _light_buffer_ambient, _light_buffer_diffuse, _light_buffer_specular };
+    //for (dword i = 0; i < _texture_shading_albedo; i++)
+    //{
+    //    ID3D12Resource* lighting_texture = lighting_target->get_frame_resource(shading_light_buffers[i], m_frame_index);
+    //    shading_target->assign_texture(lighting_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
+    //}
+    //e_gbuffers shading_gbuffers[k_shading_textures_count - _texture_shading_albedo] = { _gbuffer_albedo, _gbuffer_emissive };
+    //for (dword i = _texture_shading_albedo; i < k_shading_textures_count; i++)
+    //{
+    //    ID3D12Resource* deferred_texture = deferred_target->get_frame_resource(shading_gbuffers[i - _texture_shading_albedo], m_frame_index);
+    //    shading_target->assign_texture(deferred_texture, (e_texture_type)i, 0); // TODO: TRANSITION RESOURCE?
+    //}
+    //shading_target->begin_draw(m_command_list, m_shading_shader, 0);
+    //// Draw screen quad
+    //m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    //m_command_list->IASetVertexBuffers(0, 1, &m_screen_quad.vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
+    //m_command_list->DrawInstanced(4, 1, 0, 0);
 
     // TODO: TEXCAM IS Z FIGHTING SINCE ADDING DEFERRED RENDERING - Might have something to dow ith frame resource set index 0? I'm very tired right now and probably missing something obvious
     // Texture camera objects
     // copy lighting pass target buffer into tex cam first and don't clear
     c_render_target* texcam_target = m_render_targets[_render_target_texcams];
     // Copy rendered frame into texcam view
-    TransitionResource(m_command_list, shading_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE); // transition to copy
+    TransitionResource(m_command_list, pbr_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE); // transition to copy
     TransitionResource(m_command_list, texcam_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST); // transition to copy
-    m_command_list->CopyResource(texcam_target->get_frame_resource(0, m_frame_index), shading_target->get_frame_resource(0, m_frame_index));
-    TransitionResource(m_command_list, shading_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE); // return to target
+    m_command_list->CopyResource(texcam_target->get_frame_resource(0, m_frame_index), pbr_target->get_frame_resource(0, m_frame_index));
+    TransitionResource(m_command_list, pbr_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE); // return to target
     TransitionResource(m_command_list, texcam_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
     // Copy deferred depth buffer into texcam view
     TransitionResource(m_command_list, deferred_target->get_depth_resource(m_frame_index), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -1049,16 +1209,18 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
     for (const c_scene_object* const object : texcam_objects)
     {
         dword object_scene_index = texcam_object_scene_indices[texcam_index];
-        texcam_target->assign_texture(shading_target->get_frame_resource(0, m_frame_index), _texture_cam_render_target, texcam_index);
+        texcam_target->assign_texture(pbr_target->get_frame_resource(0, m_frame_index), _texture_cam_render_target, texcam_index);
         texcam_target->begin_draw(m_command_list, m_texcam_shader, texcam_index);
         this->set_constant_buffer_view(texcam_target, _texcam_constant_buffer_object, object_scene_index);
+
         const s_geometry_resources* const geometry_resources = object->get_model()->get_resources();
         m_command_list->IASetVertexBuffers(0, 1, &geometry_resources->vertex_buffer_view); // set the vertex buffer (using the vertex buffer view)
         m_command_list->IASetIndexBuffer(&geometry_resources->index_buffer_view);
         m_command_list->DrawIndexedInstanced(geometry_resources->index_count, 1, 0, 0, 0);
+
         texcam_index++;
     }
-    TransitionResource(m_command_list, shading_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    TransitionResource(m_command_list, pbr_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     // Post processing
     TransitionResource(m_command_list, texcam_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -1105,58 +1267,6 @@ void c_renderer_dx12::update_pipeline(c_scene* const scene, dword fps_counter)
         this->post_processing(_post_processing_depth_of_field, texture_resources, enabled_cbuffers);
     }
     TransitionResource(m_command_list, texcam_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-    // Draw ImGUI
-    // Start the Dear ImGui frame
-    ImGui_ImplDX12_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-    ImGuizmo::SetOrthographic(false);
-    ImGuizmo::BeginFrame();
-    // Make the gbuffers available for ImGUI
-    for (dword i = 0; i < k_gbuffer_count; i++)
-    {
-        // TODO: is calling this several times a frame going to cause a memory leak?
-        CreateShaderResourceView(m_device, deferred_target->get_frame_resource(i, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
-        m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
-    }
-    for (dword i = k_gbuffer_count; i < k_gbuffer_count + k_light_buffer_count; i++)
-    {
-        // Ditto above
-        dword target_index = i - k_gbuffer_count;
-        CreateShaderResourceView(m_device, lighting_target->get_frame_resource(target_index, m_frame_index), m_imgui_descriptor_heap->get_cpu_handle(i));
-        m_gbuffer_gpu_handles[i] = m_imgui_descriptor_heap->get_gpu_handle(i);
-    }
-    {
-        // SRV for depth buffer
-        D3D12_SHADER_RESOURCE_VIEW_DESC depth_srv = {};
-        depth_srv.Format = DXGI_FORMAT_R32_FLOAT;
-        depth_srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        depth_srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        depth_srv.Texture2D.MipLevels = 1;
-
-        dword index = k_gbuffer_count + k_light_buffer_count;
-        ID3D12Resource* texture_resource = m_render_targets[_render_target_deferred]->get_depth_resource(m_frame_index);
-        m_device->CreateShaderResourceView(texture_resource, &depth_srv, m_imgui_descriptor_heap->get_cpu_handle(index));
-        m_gbuffer_gpu_handles[index] = m_imgui_descriptor_heap->get_gpu_handle(index);
-    }
-    imgui_overlay(scene, this, fps_counter);
-    c_render_target* final_target = m_render_targets[k_render_target_final];
-    ID3D12DescriptorHeap* imgui_descriptor_heaps[] = { m_imgui_descriptor_heap->get_heap() };
-    m_command_list->SetDescriptorHeaps(_countof(imgui_descriptor_heaps), imgui_descriptor_heaps);
-    ImGui::Render();
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_command_list);
-
-    // prepare final frame to copy into swapchain
-    TransitionResource(m_command_list, final_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
-    ID3D12Resource* final_frame = final_target->get_frame_resource(0, m_frame_index);
-    // copy final frame to swapchain buffer and get ready to present
-    m_command_list->CopyResource(m_backbuffers[m_frame_index], final_frame);
-    TransitionResource(m_command_list, final_target->get_frame_resource(0, m_frame_index), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-    TransitionResource(m_command_list, m_backbuffers[m_frame_index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
-
-    hr = m_command_list->Close();
-    if (!HRESULT_VALID(hr)) { return; }
 }
 
 void c_renderer_dx12::set_constant_buffer_view(const c_render_target* const target, const e_constant_buffers buffer_type, const dword buffer_index)
@@ -1222,11 +1332,18 @@ void c_renderer_dx12::render_frame(c_scene* const scene, dword fps_counter)
     // has finished because the fence value will be set to "fenceValue" from the GPU since the command
     // queue is being executed on the GPU
     hr = m_command_queue->Signal(m_fences[m_frame_index], m_fence_values[m_frame_index]);
-    if (!HRESULT_VALID(hr)) { return; }
+    if (!HRESULT_VALID(m_device, hr)) { return; }
 
     // present the current backbuffer
     hr = m_swapchain->Present(0, 0);
-    if (!HRESULT_VALID(hr)) { return; }
+
+    if (hr == DXGI_ERROR_DEVICE_HUNG)
+    {
+        HRESULT removal_reason = m_device->GetDeviceRemovedReason();
+        HRESULT_VALID(m_device, removal_reason);
+    }
+
+    if (!HRESULT_VALID(m_device, hr)) { return; }
 }
 
 bool c_renderer_dx12::wait_for_previous_frame()
@@ -1246,7 +1363,7 @@ bool c_renderer_dx12::wait_for_previous_frame()
     {
         // we have the fence create an event which is signaled once the fence's current value is "fenceValue"
         hr = m_fences[m_frame_index]->SetEventOnCompletion(m_fence_values[m_frame_index], m_fence_event);
-        if (!HRESULT_VALID(hr))
+        if (!HRESULT_VALID(m_device, hr))
         {
             wait_success = K_FAILURE;
         }
@@ -1254,6 +1371,10 @@ bool c_renderer_dx12::wait_for_previous_frame()
         // We will wait until the fence has triggered the event that it's current value has reached "fenceValue". once it's value
         // has reached "fenceValue", we know the command queue has finished executing
         WaitForSingleObject(m_fence_event, INFINITE);
+
+#if defined(ENABLE_NVAPI_RAYTRACING_VALIDATION)
+        NvAPI_D3D12_FlushRaytracingValidationMessages(m_device);
+#endif
     }
 
     // increment fenceValue for next frame
@@ -1274,7 +1395,7 @@ void c_renderer_dx12::set_material_constant_buffer(const s_material_properties_c
 }
 void c_renderer_dx12::set_lights_constant_buffer(const s_light_properties_cb& cbuffer)
 {
-    m_shader_inputs[_input_lighting]->get_constant_buffer(_lighting_constant_buffer_lights)->set_data(&cbuffer, m_frame_index, 0);
+    m_shader_inputs[_input_pbr]->get_constant_buffer(_lighting_constant_buffer_lights)->set_data(&cbuffer, m_frame_index, 0);
 }
 void c_renderer_dx12::set_post_constant_buffer(const s_post_parameters_cb& cbuffer)
 {

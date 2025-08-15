@@ -27,7 +27,7 @@ const wchar_t* const get_constant_buffer_name(const e_render_pass render_pass, c
             static_assert(_countof(k_default_buffer_names) == k_deferred_constant_buffer_count);
             return k_default_buffer_names[buffer_type];
         }
-        case _render_pass_lighting:
+        case _render_pass_pbr:
         {
             if (!IN_RANGE_COUNT(buffer_type, 0, k_lighting_constant_buffer_count)) break;
 
@@ -60,13 +60,25 @@ const wchar_t* const get_constant_buffer_name(const e_render_pass render_pass, c
             static_assert(_countof(k_post_buffer_names) == k_post_constant_buffer_count);
             return k_post_buffer_names[buffer_type];
         }
+
+        case _render_pass_raytrace:
+        {
+            if (!IN_RANGE_COUNT(buffer_type, 0, 1)) break;
+
+            constexpr const wchar_t* k_rt_buffer_names[] =
+            {
+                L"RT Constant Buffer"
+            };
+            static_assert(_countof(k_rt_buffer_names) == 1);
+            return k_rt_buffer_names[buffer_type];
+        }
     }
 
     LOG_WARNING(L"tried to get name for invalid buffer type [%d] for render pass [%d]!", buffer_type, render_pass);
     return L"Unknown Constant Buffer";
 }
 
-c_constant_buffer::c_constant_buffer(ID3D12Device* const device, const e_render_pass render_pass,
+c_constant_buffer::c_constant_buffer(ID3D12Device5* const device, const e_render_pass render_pass,
     const e_constant_buffers buffer_type, const dword buffer_struct_size, const D3D12_SHADER_VISIBILITY visibility)
     : m_buffer_struct_size(buffer_struct_size)
     , m_buffer_aligned_size((buffer_struct_size + 255) & ~255)
@@ -102,13 +114,13 @@ c_constant_buffer::c_constant_buffer(ID3D12Device* const device, const e_render_
     {
         // 64KiB constant buffer - Must be a multiple of 64KiB for single-textures and constant buffers
         hr = CreateUploadBuffer(device, nullptr, 64, 1024, &m_upload_buffers[frame_index]);
-        if (!HRESULT_VALID(hr))
+        if (!HRESULT_VALID(device, hr))
         {
             LOG_WARNING(L"upload buffer creation failed! setting nullptr");
             m_upload_buffers[frame_index] = nullptr;
         }
         hr = m_upload_buffers[frame_index]->Map(0, &read_range, reinterpret_cast<void**>(&m_gpu_address[frame_index]));
-        if (!HRESULT_VALID(hr))
+        if (!HRESULT_VALID(device, hr))
         {
             m_gpu_address[frame_index] = nullptr;
         }

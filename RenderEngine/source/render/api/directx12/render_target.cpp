@@ -14,9 +14,12 @@ const wchar_t* const get_render_target_name(const e_render_targets target_type)
 	constexpr const wchar_t* k_render_target_names[] =
 	{
 		L"Deferred RT",
-		L"Lighting RT",
-		L"Shading RT",
+		L"PBR RT",
+		//L"Shading RT",
 		L"Texture Camera RT",
+
+        L"Raytace RT",
+
 		L"Default Post RT",
 		L"Blur Horizontal Post RT",
 		L"Blur Vertical Post RT",
@@ -33,7 +36,7 @@ const wchar_t* const get_render_target_name(const e_render_targets target_type)
     return k_render_target_names[target_type];
 }
 
-c_render_target::c_render_target(ID3D12Device* const device, c_shader_input* const shader_input, const e_render_targets target_type)
+c_render_target::c_render_target(ID3D12Device5* const device, c_shader_input* const shader_input, const e_render_targets target_type)
     : m_target_type(target_type)
     , m_device(device)
     , m_render_target_view_heap(nullptr)
@@ -89,7 +92,7 @@ c_render_target::c_render_target(ID3D12Device* const device, c_shader_input* con
                 1,
                 1,
                 0,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
+                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS // $TODO: only specify this for RT
             );
             // create render target buffers
             hr = m_device->CreateCommittedResource
@@ -101,7 +104,7 @@ c_render_target::c_render_target(ID3D12Device* const device, c_shader_input* con
                 &clear_value,
                 IID_PPV_ARGS(&m_render_target_buffers[resource_index])
             );
-            if (!HRESULT_VALID(hr))
+            if (!HRESULT_VALID(device, hr))
             {
                 LOG_ERROR(L"Render target buffer resource failed to create!");
                 return;
@@ -149,7 +152,7 @@ c_render_target::c_render_target(ID3D12Device* const device, c_shader_input* con
                 &depth_optimized_clear_value,
                 IID_PPV_ARGS(&m_depth_stencil_buffers[frame_buffer_index])
             );
-            if (!HRESULT_VALID(hr))
+            if (!HRESULT_VALID(device, hr))
             {
                 LOG_ERROR(L"depth/stencil buffer failed to create!");
                 return;

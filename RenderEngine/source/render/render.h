@@ -15,7 +15,9 @@
 struct s_object_cb
 {
 	matrix4x4 m_projection;
+	matrix4x4 m_projection_inverse;
 	matrix4x4 m_view;
+	matrix4x4 m_view_inverse;
 	matrix4x4 m_world;
 };
 
@@ -122,7 +124,7 @@ class c_renderer
 public:
 	c_renderer();
 
-	virtual bool initialise(const HWND hWnd) = 0;
+	virtual bool initialise(const HWND hWnd, c_scene* const scene) = 0;
 	virtual void render_frame(c_scene* const scene, dword fps_counter) = 0;
 	virtual void set_object_constant_buffer(const s_object_cb& cbuffer, const dword object_index) = 0;
 	virtual void set_material_constant_buffer(const s_material_properties_cb& cbuffer, const dword object_index) = 0;
@@ -135,9 +137,13 @@ public:
 	virtual bool create_shader(const wchar_t* vs_path, const char* vs_name, const wchar_t* ps_path, const char* ps_name, const e_shader_input input_type, s_shader_resources* out_resources) = 0;
 	virtual qword get_gbuffer_textureid(e_gbuffers gbuffer_type) const = 0;
 
+	// Rasterises when true, ray traces when false
+	bool m_raster;
+
 protected:
 	s_object_cb m_object_cb; // cb per object
 	s_material_properties_cb m_material_properties_cb;
 	s_light_properties_cb m_light_properties_cb;
 	s_post_parameters_cb m_blur_parameters_cb;
+
 };

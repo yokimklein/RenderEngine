@@ -10,15 +10,10 @@ const char* const get_gbuffer_name(const e_gbuffers buffer_type)
     constexpr const char* k_gbuffer_names[] =
     {
         "Albedo",
-        "Specular Material",
-        "Normals",
+        "Roughness",
+        "Metallic",
+        "Normal",
         "Position",
-        "Emissive Material",
-        "Ambient Material",
-        "Diffuse Material",
-        "Diffuse Lighting",
-        "Specular Lighting",
-        "Ambient Lighting",
         "Depth"
     };
     static_assert(_countof(k_gbuffer_names) == k_gbuffer_count + k_light_buffer_count + 1);
@@ -55,8 +50,8 @@ void update_render_globals()
     RECT rect;
     GetClientRect((HWND)RENDER_GLOBALS.hwnd, &rect);
 
-    RENDER_GLOBALS.render_bounds.width = rect.right - rect.left;
-    RENDER_GLOBALS.render_bounds.height = rect.bottom - rect.top;
+    //RENDER_GLOBALS.render_bounds.width = rect.right - rect.left;
+    //RENDER_GLOBALS.render_bounds.height = rect.bottom - rect.top;
     RENDER_GLOBALS.window_pos.x = static_cast<float>(rect.left);
     RENDER_GLOBALS.window_pos.y = static_cast<float>(rect.top);
 #else

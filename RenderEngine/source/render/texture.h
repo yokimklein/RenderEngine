@@ -6,8 +6,9 @@
 enum e_texture_type
 {
 	// Default render pass textures
-	_texture_diffuse = 0,
-	_texture_specular,
+	_texture_albedo = 0,
+	_texture_roughness,
+	_texture_metallic,
 	_texture_normal, // a normal map is in TANGENT SPACE: up is (0, 0, 1), relative to surface
 	k_default_textures_count,
 
@@ -20,18 +21,18 @@ enum e_texture_type
 	// Lighting render pass textures
 	_texture_lighting_position = 0,
 	_texture_lighting_normal,
-	_texture_lighting_ambient,
-	_texture_lighting_diffuse,
-	_texture_lighting_specular,
+	_texture_lighting_albedo,
+	_texture_lighting_roughness,
+	_texture_lighting_metallic,
 	k_lighting_textures_count,
 
 	// Shading render pass textures
-	_texture_shading_ambient_lighting = 0,
-	_texture_shading_diffuse_lighting,
-	_texture_shading_specular_lighting,
-	_texture_shading_albedo,
-	_texture_shading_emissive,
-	k_shading_textures_count,
+	//_texture_shading_ambient_lighting = 0,
+	//_texture_shading_diffuse_lighting,
+	//_texture_shading_specular_lighting,
+	//_texture_shading_albedo,
+	//_texture_shading_emissive,
+	//k_shading_textures_count,
 
 	// Texcam render pass
 	_texture_cam_render_target = 0,

@@ -6,8 +6,18 @@
 #include <ImGuizmo.h>
 #include <time/time.h>
 
+static bool g_imgui_enabled = true;
+
 void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword fps_counter)
 {
+    if (GetAsyncKeyState(VK_MENU) & 0x0001)
+    {
+        g_imgui_enabled = !g_imgui_enabled;
+    }
+
+    if (!g_imgui_enabled)
+        return;
+
     //ImGui::ShowDemoWindow();
 
     bool open = true;
@@ -33,21 +43,33 @@ void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword
         char debug_overlay_text[32];
         sprintf_s(debug_overlay_text, "DEBUG OVERLAY (%d/%dFPS)\n", fps_counter, TICK_RATE);
         ImGui::SeparatorText(debug_overlay_text);
+
+        // m_raster
+        ImGui::Checkbox("Raster", (bool*)&renderer->m_raster); // TODO: make renderer not a const, const casting is horrid
+
         if (ImGui::BeginTabBar("Debug Overlay Tab Bar"))
         {
-            if (ImGui::BeginTabItem("G-Buffers"))
+            if (renderer->m_raster)
             {
-                for (dword i = 0; i < k_gbuffer_count + k_light_buffer_count + 1; i++) // + depth
+                if (ImGui::BeginTabItem("G-Buffers"))
                 {
-                    ImGui::SeparatorText(get_gbuffer_name((e_gbuffers)i));
-                    const float aspect_ratio = static_cast<float>(RENDER_GLOBALS.render_bounds.height) / static_cast<float>(RENDER_GLOBALS.render_bounds.width);
-                    ImVec2 imvec = ImVec2(256.0f, 256.0f * aspect_ratio);
-                    ImGui::Image((ImTextureID)renderer->get_gbuffer_textureid((e_gbuffers)i), imvec); // width * aspect ratio corrected height
+                    for (dword i = 0; i < k_gbuffer_count + k_light_buffer_count + 1; i++) // + depth
+                    {
+                        ImGui::SeparatorText(get_gbuffer_name((e_gbuffers)i));
+                        const float aspect_ratio = static_cast<float>(RENDER_GLOBALS.render_bounds.height) / static_cast<float>(RENDER_GLOBALS.render_bounds.width);
+                        ImVec2 imvec = ImVec2(256.0f, 256.0f * aspect_ratio);
+                        ImGui::Image((ImTextureID)renderer->get_gbuffer_textureid((e_gbuffers)i), imvec); // width * aspect ratio corrected height
+                    }
+                    ImGui::EndTabItem();
                 }
-                ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Scene Objects"))
             {
+                point3d camera_pos = scene->m_camera->get_position();
+                ImGui::SliderFloat3("Camera Position", camera_pos.values, -100.0f, 100.0f);
+                point3d camera_dir = scene->m_camera->get_look_direction();
+                ImGui::SliderFloat3("Camera Direction", camera_dir.values, -100.0f, 100.0f);
+
                 dword object_index = 0;
                 for (c_scene_object* const object : *scene->get_objects())
                 {
@@ -56,15 +78,14 @@ void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword
                     {
                         selected_object_index = object_index;
                         ImGui::SeparatorText("MATERIAL\n");
-                        ImGui::Checkbox("Use Diffuse Texture", (bool*)&object->get_material()->m_properties.m_use_diffuse_texture);
-                        ImGui::Checkbox("Use Specular Texture", (bool*)&object->get_material()->m_properties.m_use_specular_texture);
+                        ImGui::Checkbox("Use Albedo Texture", (bool*)&object->get_material()->m_properties.m_use_albedo_texture);
+                        ImGui::Checkbox("Use Roughness Texture", (bool*)&object->get_material()->m_properties.m_use_roughness_texture);
+                        ImGui::Checkbox("Use Metallic Texture", (bool*)&object->get_material()->m_properties.m_use_metallic_texture);
                         ImGui::Checkbox("Use Normal Texture", (bool*)&object->get_material()->m_properties.m_use_normal_texture);
                         ImGui::Checkbox("Render Target As Texture", (bool*)&object->get_material()->m_properties.m_render_texture);
-                        ImGui::SliderFloat3("Diffuse Material", object->get_material()->m_properties.m_diffuse.values, 0.0f, 1.0f);
-                        ImGui::SliderFloat3("Specular Material", object->get_material()->m_properties.m_specular.values, 0.0f, 1.0f);
-                        ImGui::SliderFloat3("Ambient Material", object->get_material()->m_properties.m_ambient.values, 0.0f, 1.0f);
-                        ImGui::SliderFloat3("Emissive Material", object->get_material()->m_properties.m_emissive.values, 0.0f, 1.0f);
-                        ImGui::SliderFloat("Specular Power", &object->get_material()->m_properties.m_specular_power, 0.0f, 128.0f);
+                        ImGui::SliderFloat3("Albedo Material", object->get_material()->m_properties.m_albedo.values, 0.0f, 1.0f);
+                        ImGui::SliderFloat("Roughness Material", &object->get_material()->m_properties.m_roughness, 0.0f, 1.0f);
+                        ImGui::SliderFloat("Metallic Material", &object->get_material()->m_properties.m_metallic, 0.0f, 1.0f);
 
                         ImGui::SeparatorText("TRANSFORM\n");
                         point3d position = object->m_transform.get_position();
@@ -97,6 +118,11 @@ void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword
             {
                 lights_open = true;
                 ImGui::SliderFloat3("Ambient Light", scene->m_ambient_light.values, 0.0f, 1.0f);
+                if (ImGui::SliderFloat("Ambient Light", &scene->m_ambient_light.values[0], 0.0f, 1.0f))
+                {
+                    scene->m_ambient_light.g = scene->m_ambient_light.r;
+                    scene->m_ambient_light.b = scene->m_ambient_light.r;
+                }
                 for (dword i = 0; i < MAXIMUM_SCENE_LIGHTS; i++)
                 {
                     s_light* light = &scene->m_lights[i];
@@ -191,6 +217,12 @@ void imgui_overlay(c_scene* const scene, const c_renderer* const renderer, dword
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoNav |
         ImGuiWindowFlags_NoInputs;
+
+    //RECT client_rect;
+    //GetClientRect((HWND)RENDER_GLOBALS.hwnd, &client_rect);
+    //dword client_width = client_rect.right - client_rect.left;
+    //dword client_height = client_rect.bottom - client_rect.top;
+
     ImGui::SetNextWindowPos(ImVec2(RENDER_GLOBALS.window_pos.x, RENDER_GLOBALS.window_pos.y), ImGuiCond_Always, { 0.0f, 0.0f });
     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(RENDER_GLOBALS.render_bounds.width), static_cast<float>(RENDER_GLOBALS.render_bounds.height)));
     ImGui::Begin("Gizmo", 0, gizmo_window_flags);

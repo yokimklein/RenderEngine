@@ -4,9 +4,11 @@
 enum e_render_pass
 {
 	_render_pass_deferred,
-	_render_pass_lighting,
+	_render_pass_pbr,
 	_render_pass_texcam,
 	_render_pass_post_processing,
+
+	_render_pass_raytrace,
 
 	k_render_pass_count
 };
@@ -14,22 +16,21 @@ enum e_render_pass
 enum e_gbuffers
 {
 	_gbuffer_albedo,
-	_gbuffer_specular,
+	_gbuffer_roughness,
+	_gbuffer_metallic,
 	_gbuffer_normal,
 	_gbuffer_position,
-	_gbuffer_emissive,
-	_gbuffer_ambient,
-	_gbuffer_diffuse,
+	//_gbuffer_depth,
 
 	k_gbuffer_count
 };
-static const char* const get_gbuffer_name(const e_gbuffers buffer_type);
+const char* const get_gbuffer_name(const e_gbuffers buffer_type);
 
 enum e_light_buffers
 {
-	_light_buffer_diffuse,
-	_light_buffer_specular,
-	_light_buffer_ambient,
+	//_light_buffer_diffuse,
+	//_light_buffer_specular,
+	//_light_buffer_ambient,
 
 	k_light_buffer_count
 };
@@ -54,5 +55,5 @@ constexpr colour_rgba CLEAR_COLOUR = { 0.0f, 0.2f, 0.4f, 1.0f };
 constexpr dword MAX_LIGHTS = 10;
 // maximum preallocated groups of textures in a render target descriptor heap (m_shader_texture_heap)
 // max textures per group corresponds to max counts in e_texture_type
-// TODO: this isn't fantastic on memory and isn't dynamic, but its easy to implement for now
+// $TODO: this isn't fantastic on memory and isn't dynamic, but its easy to implement for now
 constexpr dword MAXIMUM_TEXTURE_SETS = 64;

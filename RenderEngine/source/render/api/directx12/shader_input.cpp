@@ -4,7 +4,7 @@
 #include <render/api/directx12/helpers.h>
 #include <render/api/directx12/constant_buffer.h>
 
-c_shader_input::c_shader_input(ID3D12Device* const device, const dword textures_count,
+c_shader_input::c_shader_input(ID3D12Device5* const device, const dword textures_count,
     c_constant_buffer* const constant_buffers[], const dword constant_buffer_count,
     const D3D12_INPUT_ELEMENT_DESC input_desc[], const dword input_element_count,
     const D3D12_DESCRIPTOR_RANGE texture_ranges[], const dword texture_range_count,
@@ -20,10 +20,10 @@ c_shader_input::c_shader_input(ID3D12Device* const device, const dword textures_
     , m_depth_comparison_func(use_depth_buffer ? depth_comparison_func : D3D12_COMPARISON_FUNC_NONE)
 {
     const bool valid_constant_buffers = constant_buffer_count > 0 ? constant_buffers != nullptr : true; // can provide no cbuffers
-    const bool valid_input_desc = input_element_count > 0 && input_desc != nullptr; // must supply at least 1 input desc
+    //const bool valid_input_desc = input_element_count > 0 && input_desc != nullptr; // must supply at least 1 input desc
     const bool valid_texture_ranges = texture_range_count > 0 ? texture_ranges != nullptr : true; // can provide no textures
-    const bool valid_render_targets = IN_RANGE_INCLUSIVE(render_target_count, 1, 8) && render_target_formats != nullptr; // must supply at least 1 render target to a max of 8 in dx12
-    const bool valid_arguments = device != nullptr && valid_constant_buffers && valid_input_desc && valid_texture_ranges && valid_render_targets;
+    const bool valid_render_targets = render_target_formats != nullptr ? IN_RANGE_INCLUSIVE(render_target_count, 1, 8) : true; // supplied render target must fit within range of 1-8
+    const bool valid_arguments = device != nullptr && valid_constant_buffers && valid_texture_ranges && valid_render_targets;
     assert(valid_arguments);
     if (!valid_arguments)
     {
@@ -49,8 +49,11 @@ c_shader_input::c_shader_input(ID3D12Device* const device, const dword textures_
 
     // Input layout
     m_input_layout = {};
-    m_input_layout.NumElements = input_element_count;
-    m_input_layout.pInputElementDescs = input_desc;
+    if (input_desc)
+    {
+        m_input_layout.NumElements = input_element_count;
+        m_input_layout.pInputElementDescs = input_desc;
+    }
 
     // Root signature - Defines what types of resources are bound to the graphics pipeline
     // Resources eg. vertex/pixel shader, constant buffer
@@ -120,7 +123,7 @@ c_shader_input::c_shader_input(ID3D12Device* const device, const dword textures_
     if (hr == S_OK)
     {
         hr = device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_root_signature));
-        if (!HRESULT_VALID(hr))
+        if (!HRESULT_VALID(device, hr))
         {
             m_root_signature = nullptr;
         }
@@ -131,7 +134,7 @@ c_shader_input::c_shader_input(ID3D12Device* const device, const dword textures_
         {
             LOG_ERROR(L"%hs", (char*)error->GetBufferPointer());
         }
-        HRESULT_VALID(hr);
+        HRESULT_VALID(device, hr);
         return;
     }
     delete[] root_parameters;
@@ -153,5 +156,8 @@ c_shader_input::~c_shader_input()
     }
     delete[] m_constant_buffers;
     SAFE_RELEASE(m_root_signature);
-    delete[] m_render_target_formats;
+    if (m_render_target_formats)
+    {
+        delete[] m_render_target_formats;
+    }
 }

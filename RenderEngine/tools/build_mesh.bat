@@ -20,7 +20,7 @@ for /r %source_dir% %%f in (*.obj) do (
         mkdir "!compiled_dir!"
     )
 	
-	%tool_dir%\meshconvert "%%f" -vbo -nodds -y -flipu -o "!compiled_dir!%%~nf.vbo" >NUL
+	%tool_dir%\meshconvert "%%f" -vbo -nodds -y -flipu -o "!compiled_dir!%%~nf.vbo_i32" >NUL
 )
 
 endlocal

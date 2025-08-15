@@ -18,7 +18,10 @@ enum e_constant_buffers
 
 	// post processing render pass
 	_post_constant_buffer = 0,
-	k_post_constant_buffer_count
+	k_post_constant_buffer_count,
+
+	_raytrace_constant_buffer = 0,
+	k_raytrace_cosntant_buffer_count
 };
 static const wchar_t* const get_constant_buffer_name(const e_render_pass render_pass, const e_constant_buffers buffer_type);
 
@@ -28,7 +31,7 @@ static const wchar_t* const get_constant_buffer_name(const e_render_pass render_
 class c_constant_buffer
 {
 public:
-	c_constant_buffer(ID3D12Device* const device, const e_render_pass render_pass,
+	c_constant_buffer(ID3D12Device5* const device, const e_render_pass render_pass,
 		const e_constant_buffers buffer_type, const dword buffer_struct_size, const D3D12_SHADER_VISIBILITY visibility);
 	~c_constant_buffer();
 
@@ -36,6 +39,10 @@ public:
 
 	inline const D3D12_SHADER_VISIBILITY get_visibility() const { return m_visibility; };
 	D3D12_GPU_VIRTUAL_ADDRESS get_gpu_address(const dword frame_index, const dword buffer_index);
+
+	const dword get_buffer_size() const { return m_buffer_aligned_size; };
+	const dword get_buffer_struct_size() const { return m_buffer_struct_size; };
+	const ubyte* const get_buffer_data(const dword frame_index, const dword sub_index) const { return m_gpu_address[frame_index] + (m_buffer_aligned_size * sub_index); };
 
 private:
 	const dword m_buffer_struct_size;
